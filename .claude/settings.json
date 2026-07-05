@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(dataviz)",
+      "Skill(dataviz:*)",
+      "Bash(node scripts/validate_palette.js \"#2f6b4e\" --ordinal --surface \"#ffffff\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#63a97f\" --ordinal --surface \"#23251f\" --mode dark)",
+      "Bash(which deno *)",
+      "Read(//Applications/**)",
+      "Bash(python3 /private/tmp/claude-501/-Users-viveksagar-Desktop-TrekSense/05a1a9ad-02f8-4936-88e1-5f6d817ae479/scratchpad/fetch_images.py)",
+      "Bash(python3 /private/tmp/claude-501/-Users-viveksagar-Desktop-TrekSense/05a1a9ad-02f8-4936-88e1-5f6d817ae479/scratchpad/fetch_images.py rupin-pass bhrigu-lake friendship-peak black-peak)",
+      "Bash(sips -g pixelWidth -g pixelHeight kedarkantha-1.jpg roopkund-1.jpg)"
+    ]
+  }
+}

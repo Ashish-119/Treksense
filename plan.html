@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Trek With Us — TrekSense</title>
+  <meta name="description" content="Tell us where you want to go — we'll plan your Himalayan trek end to end." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏔️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="container plan-main">
+    <div class="plan-hero">
+      <div class="plan-hero-text">
+        <span class="plan-kicker">🏔️ Trek With Us</span>
+        <h1>Tell us the mountain.<br />We'll handle the rest.</h1>
+        <p>Share a few details and we'll get back within 24 hours with a plan — batch dates, honest difficulty advice, gear help and the best price we can find.</p>
+        <div class="plan-points">
+          <div class="pp">✅ <b>Local, certified guides</b> on every trail</div>
+          <div class="pp">🫁 <b>Acclimatisation-first</b> itineraries</div>
+          <div class="pp">💰 <b>Price-match</b> across 10+ operators</div>
+          <div class="pp">📞 <b>Human answers</b>, not chatbots</div>
+        </div>
+      </div>
+
+      <div class="panel plan-form-card">
+        <form id="plan-form" novalidate>
+          <h3>Plan my trek</h3>
+          <div class="pf-grid">
+            <label class="pf-field">
+              <span>Your name *</span>
+              <input type="text" name="name" required placeholder="Tenzing Norgay" />
+            </label>
+            <label class="pf-field">
+              <span>Email *</span>
+              <input type="email" name="email" required placeholder="you@example.com" />
+            </label>
+            <label class="pf-field">
+              <span>Phone / WhatsApp</span>
+              <input type="tel" name="phone" placeholder="+91 98xxxxxx00" />
+            </label>
+            <label class="pf-field">
+              <span>Which trek? *</span>
+              <select name="trek" required id="trek-select">
+                <option value="">Choose a trek…</option>
+              </select>
+            </label>
+            <label class="pf-field">
+              <span>When?</span>
+              <select name="month">
+                <option value="">Flexible</option>
+                <option>Jan</option><option>Feb</option><option>Mar</option><option>Apr</option>
+                <option>May</option><option>Jun</option><option>Jul</option><option>Aug</option>
+                <option>Sep</option><option>Oct</option><option>Nov</option><option>Dec</option>
+              </select>
+            </label>
+            <label class="pf-field">
+              <span>Group size</span>
+              <select name="group">
+                <option>Just me</option><option>2</option><option>3–5</option><option>6–10</option><option>10+</option>
+              </select>
+            </label>
+            <label class="pf-field pf-wide">
+              <span>Experience level</span>
+              <div class="pf-chips" id="exp-chips">
+                <button type="button" class="chip active" data-exp="First trek">First trek</button>
+                <button type="button" class="chip" data-exp="A few treks done">A few treks done</button>
+                <button type="button" class="chip" data-exp="High-altitude regular">High-altitude regular</button>
+              </div>
+            </label>
+            <label class="pf-field pf-wide">
+              <span>Anything else?</span>
+              <textarea name="message" rows="3" placeholder="Fitness worries, budget, dates you must avoid, dietary needs…"></textarea>
+            </label>
+          </div>
+          <button type="submit" class="pf-submit">Send my enquiry →</button>
+          <p class="pf-note">No spam, no sharing your details. We reply within 24 hours.</p>
+        </form>
+
+        <div class="plan-success hide" id="plan-success">
+          <div class="ps-icon">🎉</div>
+          <h3>Enquiry received!</h3>
+          <p id="ps-summary"></p>
+          <p class="pf-note">We'll write back within 24 hours. Meanwhile, check the trek's gear list and start those stair climbs. 🥾</p>
+          <button class="pf-submit" id="ps-again">Plan another trek</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan-strip">
+      <div class="ps-stat"><b>55</b><span>treks &amp; expeditions</span></div>
+      <div class="ps-stat"><b>2×</b><span>certified guides per batch</span></div>
+      <div class="ps-stat"><b>24 h</b><span>reply time</span></div>
+      <div class="ps-stat"><b>10+</b><span>operators compared</span></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <strong>TrekSense</strong> — plan smarter, trek safer. Altitude &amp; oxygen figures are estimates; always follow your trek leader.
+    </div>
+  </footer>
+
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Primary"></nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/data2.js"></script>
+  <script src="js/images.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/plan.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Find Your Route — TrekSense</title>
+  <meta name="description" content="Plan the journey from your city to any Himalayan trek — transport, time, distance and the towns on the way." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏔️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="container plan-main">
+    <div class="page-head">
+      <h1>Find Your Route</h1>
+      <p>Pick your city and your trek — get the journey plan: transport options, travel time, total distance and the towns you'll pass.</p>
+    </div>
+
+    <div class="panel rf-picker">
+      <div class="rf-selects">
+        <label class="pf-field">
+          <span>Starting from</span>
+          <select id="rf-city"></select>
+        </label>
+        <div class="rf-arrow">→</div>
+        <label class="pf-field">
+          <span>Going to</span>
+          <select id="rf-trek"></select>
+        </label>
+      </div>
+    </div>
+
+    <div id="rf-results" class="hide">
+      <div class="rf-stats" id="rf-stats"></div>
+
+      <div class="rf-grid">
+        <div>
+          <div class="panel rf-plan">
+            <h3>🧭 Recommended journey</h3>
+            <div id="rf-legs"></div>
+            <div class="rf-tip" id="rf-tip"></div>
+          </div>
+
+          <div class="panel rf-modes">
+            <h3>🚉 Getting to <span id="rf-hub-name"></span></h3>
+            <div id="rf-mode-rows"></div>
+          </div>
+
+          <div class="panel rf-via">
+            <h3>📍 On the way you'll pass</h3>
+            <div class="peak-row" id="rf-via-chips"></div>
+          </div>
+        </div>
+
+        <div class="route-map rf-map">
+          <iframe id="rf-iframe" title="Route map" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <div class="map-actions" id="rf-map-actions"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <strong>TrekSense</strong> — journey times are realistic estimates for mountain roads; always keep a buffer day.
+    </div>
+  </footer>
+
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Primary"></nav>
+
+  <script src="js/data.js"></script>
+  <script src="js/data2.js"></script>
+  <script src="js/images.js"></script>
+  <script src="js/routesdata.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/route.js"></script>
+</body>
+</html>
