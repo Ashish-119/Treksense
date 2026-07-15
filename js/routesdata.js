@@ -92,3 +92,80 @@ const TREK_ROUTES = {
   "kashmir-great-lakes":    { hub: "srinagar", km: 80, hrs: 2.5, via: ["Kangan", "Sonamarg"] },
   "goechala":               { hub: "bagdogra", km: 150, hrs: 6, via: ["Jorethang", "Tashiding"] }
 };
+
+/* v3 additions — Nepal hubs + routes for the 65 new treks */
+HUBS.kathmandu = { name: "Kathmandu", lat: 27.70, lon: 85.32, air: "Tribhuvan (KTM)", rail: "Gorakhpur (GKP) + road (Sunauli border)", approachVia: ["Sunauli / fly-in"] };
+HUBS.pokhara   = { name: "Pokhara", lat: 28.21, lon: 83.99, air: "Pokhara (PKR)", rail: "Gorakhpur (GKP) + road", approachVia: ["Kathmandu / Sunauli"] };
+
+Object.assign(TREK_ROUTES, {
+  /* Nepal */
+  "everest-base-camp": { hub: "kathmandu", km: 140, hrs: 5, via: ["Ramechhap drive (4 h)", "Lukla flight (25 min)", "Phakding"] },
+  "gokyo-lakes":       { hub: "kathmandu", km: 140, hrs: 5, via: ["Ramechhap drive", "Lukla flight", "Namche"] },
+  "everest-three-passes": { hub: "kathmandu", km: 140, hrs: 5, via: ["Ramechhap drive", "Lukla flight", "Namche"] },
+  "island-peak":       { hub: "kathmandu", km: 140, hrs: 5, via: ["Lukla flight", "Namche", "Chhukung"] },
+  "mera-peak":         { hub: "kathmandu", km: 140, hrs: 5, via: ["Lukla flight", "Zatrwa La", "Kothe"] },
+  "lobuche-east":      { hub: "kathmandu", km: 140, hrs: 5, via: ["Lukla flight", "Namche", "Lobuche"] },
+  "pikey-peak":        { hub: "kathmandu", km: 185, hrs: 8, via: ["BP Highway", "Okhaldhunga", "Dhap"] },
+  "langtang-valley":   { hub: "kathmandu", km: 122, hrs: 7, via: ["Trisuli", "Dhunche", "Syabrubesi"] },
+  "gosainkunda":       { hub: "kathmandu", km: 117, hrs: 6.5, via: ["Trisuli", "Dhunche"] },
+  "helambu":           { hub: "kathmandu", km: 15, hrs: 0.7, via: ["Sundarijal"] },
+  "manaslu-circuit":   { hub: "kathmandu", km: 160, hrs: 8, via: ["Dhading", "Arughat", "Machha Khola"] },
+  "tsum-valley":       { hub: "kathmandu", km: 160, hrs: 8, via: ["Arughat", "Machha Khola"] },
+  "rara-lake":         { hub: "kathmandu", km: 380, hrs: 4, via: ["Nepalgunj flight", "Talcha flight"] },
+  "kanchenjunga-base-camp": { hub: "kathmandu", km: 400, hrs: 12, via: ["Bhadrapur flight", "Ilam", "Taplejung"] },
+  "annapurna-base-camp": { hub: "pokhara", km: 42, hrs: 1.5, via: ["Nayapul", "Jhinu"] },
+  "annapurna-circuit": { hub: "pokhara", km: 110, hrs: 4, via: ["Dumre", "Besisahar"] },
+  "ghorepani-poon-hill": { hub: "pokhara", km: 42, hrs: 1.5, via: ["Nayapul", "Ulleri"] },
+  "mardi-himal":       { hub: "pokhara", km: 27, hrs: 1, via: ["Kande"] },
+  "khopra-ridge":      { hub: "pokhara", km: 42, hrs: 1.5, via: ["Nayapul", "Swanta"] },
+  "upper-mustang":     { hub: "pokhara", km: 80, hrs: 0.7, via: ["Jomsom flight (20 min)", "Kagbeni"] },
+  /* Kashmir */
+  "tarsar-marsar":     { hub: "srinagar", km: 100, hrs: 3, via: ["Anantnag", "Pahalgam", "Aru"] },
+  "kolahoi-base-camp": { hub: "srinagar", km: 100, hrs: 3, via: ["Pahalgam", "Aru"] },
+  "naranag-gangbal":   { hub: "srinagar", km: 50, hrs: 2, via: ["Kangan", "Naranag"] },
+  "warwan-valley":     { hub: "srinagar", km: 210, hrs: 8, via: ["Sonamarg", "Zoji La", "Panikhar"] },
+  "doodhpathri-tosamaidan": { hub: "srinagar", km: 42, hrs: 1.5, via: ["Budgam", "Doodhpathri"] },
+  "kounsarnag":        { hub: "srinagar", km: 75, hrs: 2.5, via: ["Shopian", "Aharbal"] },
+  "sonamarg-vishansar": { hub: "srinagar", km: 80, hrs: 2.5, via: ["Kangan", "Sonamarg"] },
+  "bodpathri-lakes":   { hub: "srinagar", km: 47, hrs: 1.7, via: ["Charar-e-Sharief", "Yusmarg"] },
+  /* Sikkim & Darjeeling */
+  "sandakphu-phalut":  { hub: "bagdogra", km: 90, hrs: 3.5, via: ["Mirik", "Sukhia", "Manebhanjan"] },
+  "tonglu-tumling":    { hub: "bagdogra", km: 90, hrs: 3.5, via: ["Mirik", "Manebhanjan"] },
+  "dzongri-trail":     { hub: "bagdogra", km: 150, hrs: 6, via: ["Jorethang", "Tashiding", "Yuksom"] },
+  "green-lake":        { hub: "bagdogra", km: 175, hrs: 8, via: ["Gangtok", "Mangan", "Lachen"] },
+  "barsey-rhododendron": { hub: "bagdogra", km: 130, hrs: 5, via: ["Jorethang", "Sombaria", "Okhrey"] },
+  "tholung-valley":    { hub: "bagdogra", km: 160, hrs: 7, via: ["Gangtok", "Dzongu permits", "Lingthem"] },
+  "phoktey-dara":      { hub: "bagdogra", km: 145, hrs: 6, via: ["Jorethang", "Uttarey"] },
+  /* Himachal */
+  "patalsu-peak":      { hub: "manali", km: 14, hrs: 0.5, via: ["Palchan", "Solang"] },
+  "yulla-kanda":       { hub: "shimla", km: 215, hrs: 8.5, via: ["Rampur", "Tapri", "Yulla Khas"] },
+  "lamkhaga-pass":     { hub: "shimla", km: 245, hrs: 10, via: ["Rampur", "Karcham", "Sangla", "Chitkul"] },
+  "borasu-pass":       { hub: "dehradun", km: 190, hrs: 8.5, via: ["Mori", "Netwar", "Sankri"] },
+  "kugti-pass":        { hub: "dharamshala", km: 65, hrs: 2.5, via: ["Chamba side: Bharmour"] },
+  "manimahesh-kailash": { hub: "dharamshala", km: 78, hrs: 3, via: ["Bharmour", "Hadsar"] },
+  "miyar-valley":      { hub: "manali", km: 130, hrs: 5, via: ["Atal Tunnel", "Keylong", "Udaipur"] },
+  "chandratal-baralacha": { hub: "manali", km: 120, hrs: 5, via: ["Atal Tunnel", "Chhatru", "Batal"] },
+  "tosh-kutla":        { hub: "bhuntar", km: 58, hrs: 2.5, via: ["Kasol", "Barsheni", "Tosh"] },
+  "rashol-pass":       { hub: "bhuntar", km: 31, hrs: 1.5, via: ["Kasol"] },
+  "bijli-mahadev":     { hub: "bhuntar", km: 18, hrs: 1, via: ["Kullu", "Chansari"] },
+  "hatu-peak":         { hub: "shimla", km: 65, hrs: 2.5, via: ["Kufri", "Narkanda"] },
+  "dainkund-khajjiar": { hub: "dharamshala", km: 120, hrs: 4.5, via: ["Chamba road", "Dalhousie"] },
+  "chanshal-pass":     { hub: "shimla", km: 130, hrs: 5.5, via: ["Theog", "Rohru", "Larot"] },
+  "minkiani-pass":     { hub: "dharamshala", km: 30, hrs: 1.3, via: ["Ghera", "Kareri Village"] },
+  /* Uttarakhand */
+  "vasuki-tal-kedarnath": { hub: "rishikesh", km: 210, hrs: 9, via: ["Rudraprayag", "Guptkashi", "Gaurikund"] },
+  "khatling-glacier":  { hub: "rishikesh", km: 170, hrs: 7.5, via: ["Tehri", "Ghansali", "Ghuttu"] },
+  "mayali-pass":       { hub: "rishikesh", km: 170, hrs: 7.5, via: ["Ghansali", "Ghuttu"] },
+  "chenap-valley":     { hub: "rishikesh", km: 260, hrs: 10.5, via: ["Chamoli", "Joshimath", "Thaing"] },
+  "kedarnath-trek":    { hub: "rishikesh", km: 210, hrs: 9, via: ["Rudraprayag", "Guptkashi", "Gaurikund"] },
+  "kush-kalyan":       { hub: "rishikesh", km: 185, hrs: 8, via: ["New Tehri", "Ghansali", "Silla"] },
+  "binsar-zero-point": { hub: "kathgodam", km: 110, hrs: 4, via: ["Almora", "Binsar gate"] },
+  "khaliya-top":       { hub: "kathgodam", km: 275, hrs: 11.5, via: ["Almora", "Chaukori", "Munsiyari"] },
+  "adi-kailash":       { hub: "kathgodam", km: 300, hrs: 13, via: ["Pithoragarh", "Dharchula (permits)"] },
+  "ranthan-kharak":    { hub: "kathgodam", km: 220, hrs: 9.5, via: ["Almora", "Bageshwar", "Gogina"] },
+  "dev-kyara":         { hub: "dehradun", km: 185, hrs: 8, via: ["Purola", "Mori", "Jakhol"] },
+  "ali-bedni-bugyal":  { hub: "rishikesh", km: 245, hrs: 10, via: ["Karnaprayag", "Tharali", "Lohajung"] },
+  "nachiketa-tal":     { hub: "dehradun", km: 155, hrs: 6, via: ["Uttarkashi", "Chaurangi Khal"] },
+  "surya-top":         { hub: "dehradun", km: 175, hrs: 7, via: ["Uttarkashi", "Barsu"] },
+  "dronagiri-village": { hub: "rishikesh", km: 275, hrs: 11, via: ["Joshimath", "Jumma"] }
+});

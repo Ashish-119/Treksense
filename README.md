@@ -1,6 +1,6 @@
 # 🏔️ TrekSense
 
-**Plan smarter, trek safer.** A modern, fully responsive website giving trekkers deep insight into **55 Indian Himalayan treks & expeditions** (Uttarakhand, Himachal, Kashmir & Sikkim) — live weather, oxygen levels, difficulty maps, visible peaks, wildlife, gear checklists, ~500 curated photographs and operator price comparison.
+**Plan smarter, trek safer.** A modern, fully responsive website giving trekkers deep insight into **120 Himalayan treks & expeditions** (Uttarakhand, Himachal, Kashmir, Sikkim, Darjeeling & Nepal) — live weather, oxygen levels, difficulty maps, visible peaks, wildlife, gear checklists, ~1,000 curated photographs and operator price comparison.
 
 ## ✨ Features
 
@@ -51,7 +51,10 @@ TrekSense/
 └── js/
     ├── images.js   # Photo manifest with per-image attribution
     ├── data.js     # Trek knowledge base — 15 flagship treks, fully hand-written
-    ├── data2.js    # 40 more UK/HP treks & expeditions (compact specs + expander)
+    ├── data2.js    # 40 more UK/HP treks (compact specs + expander + operator roster)
+    ├── data3.js    # 65 more: Nepal, Kashmir, Sikkim, Darjeeling + deeper HP/UK
+    ├── routesdata.js # Journey planner knowledge (cities, hubs, road approaches)
+    ├── peaks.js    # 78-peak photo library for the Peaks Visible section
     ├── shared.js   # Theme, saved-store, icons, SVG scene art + gallery variants
     ├── effects.js  # Motion layer (reveals, tilt, parallax, page transitions)
     ├── app.js      # Explore page logic

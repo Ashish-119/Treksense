@@ -579,7 +579,7 @@ section.block { padding-top: 34px; scroll-margin-top: 130px; }
 .weather-wrap { display: grid; grid-template-columns: 1fr; gap: 16px; }
 @media (min-width: 768px) { .weather-wrap { grid-template-columns: 1.1fr 1.6fr; } }
 .weather-now {
-  background: linear-gradient(145deg, var(--brand) 0%, #1d4a35 100%);
+  background: linear-gradient(145deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 55%, #000) 100%);
   color: #fff;
   border-radius: var(--radius);
   padding: 24px;
@@ -1271,3 +1271,69 @@ body.fx-page-exit {
 
 .map-btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
 .map-btn-primary:hover { color: #fff; filter: brightness(1.1); }
+
+
+/* ---------- Professional icon utilities ---------- */
+.ic { display: inline-flex; width: 17px; height: 17px; vertical-align: -3px; flex: none; }
+.ic svg { width: 100%; height: 100%; }
+.ic-brand { color: var(--brand); }
+.ic-light { color: currentColor; }
+.ic-hard { color: var(--hard); width: 26px; height: 26px; display: inline-flex; flex: none; }
+.ic-hard svg { width: 100%; height: 100%; }
+.em { display: inline-flex; width: 24px; height: 24px; color: var(--brand); flex: none; }
+.em svg { width: 100%; height: 100%; }
+.warn-ic { color: var(--viz-critical); width: 15px; height: 15px; }
+.fi.ic-brand, .si.ic-brand { width: 20px; height: 20px; display: inline-flex; flex: none; margin-top: 1px; }
+.fi.ic-brand svg, .si.ic-brand svg { width: 100%; height: 100%; }
+.rm-icon.ic-brand { width: 24px; height: 24px; display: inline-flex; }
+.rm-icon.ic-brand svg { width: 100%; height: 100%; }
+.rf-leg .ic { width: 18px; height: 18px; margin-right: 2px; }
+.peak .ic { width: 13px; height: 13px; margin-right: 4px; vertical-align: -2px; color: var(--ink-2); }
+.gear-cat h4 .ic { width: 15px; height: 15px; color: var(--brand); }
+.map-btn .ic { width: 16px; height: 16px; margin-right: 5px; }
+.plan-kicker .ic { width: 15px; height: 15px; margin-right: 4px; }
+.pp .ic { width: 17px; height: 17px; margin-right: 6px; }
+.rf-grid h3 .ic { width: 18px; height: 18px; margin-right: 6px; vertical-align: -3px; }
+.o2-note .warn-ic { display: inline-flex; }
+.plan-cta .ic { margin-right: 6px; }
+
+
+/* ---------- Accessibility & chrome polish ---------- */
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -60px;
+  z-index: 200;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: 0 0 12px 12px;
+  transition: top 0.2s ease;
+}
+.skip-link:focus { top: 0; }
+
+:focus-visible {
+  outline: 2.5px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.trek-card:focus-visible { outline-offset: 4px; }
+
+.footer-nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+.footer-nav a:hover { color: var(--brand); }
+.footer-nav span { color: var(--line); }
+
+.hp-field {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px; height: 1px;
+  opacity: 0;
+}

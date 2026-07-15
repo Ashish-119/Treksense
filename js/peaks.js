@@ -1,4 +1,4 @@
-/* Peak photo library (Wikimedia Commons). Regenerate: scratchpad/fetch_peaks.py */
+/* Peak photo library (Wikimedia Commons). */
 const PEAK_LIB = {
  "trishul": {
   "name": "Mt. Trishul",
@@ -406,6 +406,332 @@ const PEAK_LIB = {
   "credit": "Sumita Roy Dutta · CC BY-SA 4.0 · Wikimedia Commons",
   "aliases": [
    "chau chau kang nilda"
+  ]
+ },
+ "everest": {
+  "name": "Mt. Everest",
+  "ft": "29,032 ft",
+  "src": "images/peaks/everest.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "everest"
+  ]
+ },
+ "lhotse": {
+  "name": "Lhotse",
+  "ft": "27,940 ft",
+  "src": "images/peaks/lhotse.jpg",
+  "credit": "Unknown · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "lhotse"
+  ]
+ },
+ "nuptse": {
+  "name": "Nuptse",
+  "ft": "25,791 ft",
+  "src": "images/peaks/nuptse.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "nuptse"
+  ]
+ },
+ "ama-dablam": {
+  "name": "Ama Dablam",
+  "ft": "22,349 ft",
+  "src": "images/peaks/ama-dablam.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "ama dablam"
+  ]
+ },
+ "pumori": {
+  "name": "Pumori",
+  "ft": "23,494 ft",
+  "src": "images/peaks/pumori.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "pumori"
+  ]
+ },
+ "makalu": {
+  "name": "Makalu",
+  "ft": "27,838 ft",
+  "src": "images/peaks/makalu.jpg",
+  "credit": "Craig Taylor · CC BY-SA 2.0 · Wikimedia Commons",
+  "aliases": [
+   "makalu"
+  ]
+ },
+ "cho-oyu": {
+  "name": "Cho Oyu",
+  "ft": "26,864 ft",
+  "src": "images/peaks/cho-oyu.jpg",
+  "credit": "Steve Hicks · CC BY 2.0 · Wikimedia Commons",
+  "aliases": [
+   "cho oyu"
+  ]
+ },
+ "machapuchare": {
+  "name": "Machapuchare (Fishtail)",
+  "ft": "22,943 ft",
+  "src": "images/peaks/machapuchare.jpg",
+  "credit": "Bijay Chaurasia · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "machapuchare",
+   "machhapuchhre"
+  ]
+ },
+ "annapurna-south": {
+  "name": "Annapurna South",
+  "ft": "23,684 ft",
+  "src": "images/peaks/annapurna-south.jpg",
+  "credit": "Bijay Chaurasia · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "annapurna south"
+  ]
+ },
+ "annapurna-i": {
+  "name": "Annapurna I",
+  "ft": "26,545 ft",
+  "src": "images/peaks/annapurna-i.jpg",
+  "credit": "Bijay Chaurasia · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "annapurna i",
+   "annapurna ii",
+   "annapurna iii",
+   "annapurna iv",
+   "annapurna (far)"
+  ]
+ },
+ "dhaulagiri": {
+  "name": "Dhaulagiri",
+  "ft": "26,795 ft",
+  "src": "images/peaks/dhaulagiri.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "dhaulagiri"
+  ]
+ },
+ "manaslu-peak": {
+  "name": "Manaslu",
+  "ft": "26,781 ft",
+  "src": "images/peaks/manaslu-peak.jpg",
+  "credit": "Samdesherpa · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "manaslu"
+  ]
+ },
+ "langtang-lirung": {
+  "name": "Langtang Lirung",
+  "ft": "23,711 ft",
+  "src": "images/peaks/langtang-lirung.jpg",
+  "credit": "Saroj Pandey · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "langtang lirung"
+  ]
+ },
+ "thamserku": {
+  "name": "Thamserku",
+  "ft": "21,680 ft",
+  "src": "images/peaks/thamserku.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "thamserku"
+  ]
+ },
+ "kangtega": {
+  "name": "Kangtega",
+  "ft": "22,251 ft",
+  "src": "images/peaks/kangtega.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "kangtega"
+  ]
+ },
+ "kongde": {
+  "name": "Kongde Ri",
+  "ft": "20,299 ft",
+  "src": "images/peaks/kongde.jpg",
+  "credit": "Nirojsedhai · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "kongde"
+  ]
+ },
+ "numbur": {
+  "name": "Numbur",
+  "ft": "22,802 ft",
+  "src": "images/peaks/numbur.jpg",
+  "credit": "Nirmal Dulal · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "numbur"
+  ]
+ },
+ "dorje-lakpa": {
+  "name": "Dorje Lakpa",
+  "ft": "22,929 ft",
+  "src": "images/peaks/dorje-lakpa.jpg",
+  "credit": "Nirmal Dulal · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "dorje lakpa"
+  ]
+ },
+ "ganesh-himal": {
+  "name": "Ganesh Himal",
+  "ft": "24,373 ft",
+  "src": "images/peaks/ganesh-himal.jpg",
+  "credit": "Solundir · CC BY-SA 3.0 · Wikimedia Commons",
+  "aliases": [
+   "ganesh himal"
+  ]
+ },
+ "hiunchuli": {
+  "name": "Hiunchuli",
+  "ft": "21,132 ft",
+  "src": "images/peaks/hiunchuli.jpg",
+  "credit": "Ahtih (talk) · CC BY 3.0 · Wikimedia Commons",
+  "aliases": [
+   "hiunchuli"
+  ]
+ },
+ "gangapurna": {
+  "name": "Gangapurna",
+  "ft": "24,458 ft",
+  "src": "images/peaks/gangapurna.jpg",
+  "credit": "Roman Yahodka · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "gangapurna"
+  ]
+ },
+ "nilgiri-nepal": {
+  "name": "Nilgiri (Nepal)",
+  "ft": "23,166 ft",
+  "src": "images/peaks/nilgiri-nepal.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "nilgiri (nepal)",
+   "nilgiri himal"
+  ]
+ },
+ "jannu": {
+  "name": "Jannu (Kumbhakarna)",
+  "ft": "25,295 ft",
+  "src": "images/peaks/jannu.jpg",
+  "credit": "Carsten.nebel · CC BY 3.0 · Wikimedia Commons",
+  "aliases": [
+   "jannu"
+  ]
+ },
+ "siniolchu": {
+  "name": "Siniolchu",
+  "ft": "22,600 ft",
+  "src": "images/peaks/siniolchu.jpg",
+  "credit": "Charles Fanning · Public domain · Wikimedia Commons",
+  "aliases": [
+   "siniolchu"
+  ]
+ },
+ "chomolhari": {
+  "name": "Chomolhari (Bhutan)",
+  "ft": "23,997 ft",
+  "src": "images/peaks/chomolhari.jpg",
+  "credit": "Martyn Smith · CC BY 2.0 · Wikimedia Commons",
+  "aliases": [
+   "chomolhari",
+   "jomolhari"
+  ]
+ },
+ "kolahoi": {
+  "name": "Kolahoi (Gwash Brari)",
+  "ft": "17,799 ft",
+  "src": "images/peaks/kolahoi.jpg",
+  "credit": "Irfanaru · CC BY-SA 3.0 · Wikimedia Commons",
+  "aliases": [
+   "kolahoi",
+   "gwash brari"
+  ]
+ },
+ "papsura": {
+  "name": "Papsura",
+  "ft": "21,165 ft",
+  "src": "images/peaks/papsura.jpg",
+  "credit": "Moritz fs · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "papsura"
+  ]
+ },
+ "mani-mahesh-kailash": {
+  "name": "Mani Mahesh Kailash",
+  "ft": "18,547 ft",
+  "src": "images/peaks/mani-mahesh-kailash.jpg",
+  "credit": "Hiranmay · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "mani mahesh kailash",
+   "manimahesh kailash",
+   "kailash glimpses",
+   "kailash glimpse"
+  ]
+ },
+ "adi-kailash-peak": {
+  "name": "Adi Kailash",
+  "ft": "19,505 ft",
+  "src": "images/peaks/adi-kailash-peak.jpg",
+  "credit": "Himalayan Dream Treks · CC BY-SA 4.0 · Wikimedia Commons",
+  "aliases": [
+   "adi kailash"
+  ]
+ },
+ "om-parvat": {
+  "name": "Om Parvat",
+  "ft": "19,090 ft",
+  "src": "images/peaks/om-parvat.jpg",
+  "credit": "Border scholar · CC0 · Wikimedia Commons",
+  "aliases": [
+   "om parvat"
+  ]
+ },
+ "lamjung-himal": {
+  "name": "Lamjung Himal",
+  "ft": "22,405 ft",
+  "src": "images/peaks/lamjung-himal.jpg",
+  "credit": "Gaurab · CC BY-SA 3.0 · Wikimedia Commons",
+  "aliases": [
+   "lamjung himal"
+  ]
+ },
+ "cholatse": {
+  "name": "Cholatse",
+  "ft": "21,129 ft",
+  "src": "images/peaks/cholatse.jpg",
+  "credit": "Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons",
+  "aliases": [
+   "cholatse"
+  ]
+ },
+ "island-peak-pk": {
+  "name": "Island Peak",
+  "ft": "20,305 ft",
+  "src": "images/peaks/island-peak-pk.jpg",
+  "credit": "Mountaineer · CC BY 3.0 · Wikimedia Commons",
+  "aliases": [
+   "island peak"
+  ]
+ },
+ "baruntse": {
+  "name": "Baruntse",
+  "ft": "23,389 ft",
+  "src": "images/peaks/baruntse.jpg",
+  "credit": "Mathias Zehring · CC BY-SA 3.0 · Wikimedia Commons",
+  "aliases": [
+   "baruntse"
+  ]
+ },
+ "tilicho": {
+  "name": "Tilicho Peak",
+  "ft": "23,406 ft",
+  "src": "images/peaks/tilicho.jpg",
+  "credit": "Kogo · GFDL · Wikimedia Commons",
+  "aliases": [
+   "tilicho"
   ]
  }
 };

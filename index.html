@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.open-meteo.com; frame-src https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>TrekSense — Explore Himalayan Treks</title>
+  <meta property="og:title" content="TrekSense — 120 Himalayan Treks, One Honest Guide" />
+  <meta property="og:description" content="Live weather, oxygen levels, route maps, gear lists and operator prices for 120 treks across India & Nepal." />
+  <meta property="og:type" content="website" />
   <meta name="description" content="TrekSense: live weather, oxygen levels, difficulty maps, gear lists, wildlife and best prices for Indian Himalayan treks." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏔️</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,6 +17,8 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+
+  <a class="skip-link" href="#trek-grid">Skip to treks</a>
 
   <header class="site-header" id="site-header"></header>
 
@@ -37,6 +44,10 @@
         <div class="chip-row" id="chips-difficulty"></div>
       </div>
       <div class="filter-group">
+        <h4>Region</h4>
+        <div class="chip-row" id="chips-region"></div>
+      </div>
+      <div class="filter-group">
         <h4>Season</h4>
         <div class="chip-row" id="chips-season"></div>
       </div>
@@ -55,6 +66,12 @@
 
   <footer class="site-footer">
     <div class="container">
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="index.html#/explore">Explore</a><span>·</span>
+        <a href="route.html">Find Your Route</a><span>·</span>
+        <a href="plan.html">Trek With Us</a><span>·</span>
+        <a href="index.html#/saved">Saved</a>
+      </nav>
       <strong>TrekSense</strong> — plan smarter, trek safer. Altitude &amp; oxygen figures are estimates; always follow your trek leader.
     </div>
   </footer>
@@ -63,6 +80,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/data2.js"></script>
+  <script src="js/data3.js"></script>
   <script src="js/images.js"></script>
   <script src="js/shared.js"></script>
   <script src="js/effects.js"></script>

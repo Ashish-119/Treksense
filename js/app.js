@@ -6,6 +6,7 @@ const state = {
   view: "explore",          // explore | saved
   query: "",
   difficulty: "All",
+  region: "All",
   season: "All",
   sort: "featured"
 };
@@ -18,9 +19,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#bottom-nav").innerHTML = bottomNavHTML(state.view);
   updateThemeIcons();
 
+  let searchTimer;
   $("#search-input").addEventListener("input", e => {
-    state.query = e.target.value.trim().toLowerCase();
-    render();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {          // debounce: 120 cards re-render
+      state.query = e.target.value.trim().toLowerCase();
+      render();
+    }, 150);
   });
 
   $("#filter-toggle").addEventListener("click", () => {
@@ -48,6 +53,7 @@ function syncViewFromHash() {
 /* ---------- Filters ---------- */
 function buildFilterChips() {
   const diffs = ["All", "Easy", "Moderate", "Hard", "Expedition"];
+  const regions = ["All", ...[...new Set(TREKS.map(t => t.state))]];
   const seasons = ["All", "Winter", "Spring", "Summer", "Monsoon", "Autumn"];
   const sorts = [
     ["featured", "Featured"], ["price-asc", "Price: low → high"],
@@ -57,6 +63,8 @@ function buildFilterChips() {
 
   $("#chips-difficulty").innerHTML = diffs.map(d =>
     `<button class="chip ${d === state.difficulty ? "active" : ""}" data-diff="${d}">${d}</button>`).join("");
+  $("#chips-region").innerHTML = regions.map(r =>
+    `<button class="chip ${r === state.region ? "active" : ""}" data-region="${r}">${r}</button>`).join("");
   $("#chips-season").innerHTML = seasons.map(s =>
     `<button class="chip ${s === state.season ? "active" : ""}" data-season="${s}">${s}</button>`).join("");
   $("#chips-sort").innerHTML = sorts.map(([v, l]) =>
@@ -66,6 +74,7 @@ function buildFilterChips() {
     const b = e.target.closest(".chip");
     if (!b) return;
     if (b.dataset.diff) state.difficulty = b.dataset.diff;
+    if (b.dataset.region) state.region = b.dataset.region;
     if (b.dataset.season) state.season = b.dataset.season;
     if (b.dataset.sort) state.sort = b.dataset.sort;
     buildFilterChips();
@@ -84,6 +93,7 @@ function filteredTreks() {
       (t.name + " " + t.region + " " + t.state).toLowerCase().includes(state.query));
   }
   if (state.difficulty !== "All") list = list.filter(t => t.difficulty === state.difficulty);
+  if (state.region !== "All") list = list.filter(t => t.state === state.region);
   if (state.season !== "All") list = list.filter(t => t.seasons.includes(state.season));
 
   const sorters = {

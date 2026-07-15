@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.open-meteo.com; frame-src https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Trek Details — TrekSense</title>
   <meta name="description" content="Live weather, oxygen levels, difficulty, gear, wildlife and prices for this trek." />
@@ -17,7 +19,7 @@
 
   <div class="hero" id="hero">
     <div class="container hero-top">
-      <button class="hero-btn" onclick="history.length > 1 ? history.back() : location.assign('index.html')" aria-label="Go back">
+      <button class="hero-btn" id="back-btn" aria-label="Go back">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <button class="hero-btn" id="hero-save" aria-label="Save trek"></button>
@@ -49,7 +51,7 @@
 
   <main class="container detail-main">
     <section class="block" id="overview">
-      <div class="block-head"><h2><span class="em">🧭</span> Overview</h2></div>
+      <div class="block-head"><h2><span class="em" data-icon="compass"></span> Overview</h2></div>
       <div class="panel">
         <p class="about-text" id="about-text"></p>
         <div class="highlight-row" id="highlight-row"></div>
@@ -58,7 +60,7 @@
 
     <section class="block" id="gallery">
       <div class="block-head">
-        <h2><span class="em">📸</span> Gallery</h2>
+        <h2><span class="em" data-icon="camera"></span> Gallery</h2>
         <p>The trail through the day — tap any frame to view it full-screen.</p>
       </div>
       <div class="gallery-strip" id="gallery-strip"></div>
@@ -66,7 +68,7 @@
 
     <section class="block" id="route">
       <div class="block-head">
-        <h2><span class="em">🗺️</span> Route Map</h2>
+        <h2><span class="em" data-icon="map"></span> Route Map</h2>
         <p>Elevation profile from basecamp to the high point, and the trailhead on the map.</p>
       </div>
       <div class="route-wrap">
@@ -83,7 +85,7 @@
 
     <section class="block" id="weather">
       <div class="block-head">
-        <h2><span class="em">🌤️</span> Latest Weather</h2>
+        <h2><span class="em" data-icon="sun"></span> Latest Weather</h2>
         <p id="weather-sub"></p>
       </div>
       <div class="weather-wrap">
@@ -94,7 +96,7 @@
 
     <section class="block" id="difficulty">
       <div class="block-head">
-        <h2><span class="em">📈</span> Where It Gets Hard</h2>
+        <h2><span class="em" data-icon="chart"></span> Where It Gets Hard</h2>
         <p>Segment-by-segment difficulty so you know exactly what's coming.</p>
       </div>
       <div class="panel">
@@ -105,12 +107,12 @@
 
     <section class="block" id="oxygen">
       <div class="block-head">
-        <h2><span class="em">🫁</span> Oxygen Levels</h2>
+        <h2><span class="em" data-icon="activity"></span> Oxygen Levels</h2>
         <p>Available oxygen at each checkpoint, as a share of sea-level oxygen.</p>
       </div>
       <div class="panel">
         <div class="o2-note">
-          <span class="sw"></span> Oxygen vs sea level &nbsp;·&nbsp; ⚠️ marks thin-air zones below 62% — ascend slowly and hydrate.
+          <span class="sw"></span> Oxygen vs sea level &nbsp;·&nbsp; <span class="ic warn-ic" data-icon="alert"></span> marks thin-air zones below 62% — ascend slowly and hydrate.
         </div>
         <div class="o2-rows" id="o2-rows"></div>
         <div class="o2-scale"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100% (sea level)</span></div>
@@ -119,7 +121,7 @@
 
     <section class="block" id="checkpoints">
       <div class="block-head">
-        <h2><span class="em">🏔️</span> Checkpoints &amp; Visible Peaks</h2>
+        <h2><span class="em" data-icon="mountain"></span> Checkpoints &amp; Visible Peaks</h2>
         <p>What you'll stand on — and what you'll see from there.</p>
       </div>
       <div class="panel">
@@ -129,7 +131,7 @@
 
     <section class="block" id="peaks">
       <div class="block-head">
-        <h2><span class="em">🗻</span> Peaks Visible</h2>
+        <h2><span class="em" data-icon="peaks"></span> Peaks Visible</h2>
         <p>The named summits you'll actually see on this trail.</p>
       </div>
       <div class="peaks-grid" id="peaks-grid"></div>
@@ -137,7 +139,7 @@
 
     <section class="block" id="gear">
       <div class="block-head">
-        <h2><span class="em">🎒</span> Equipment Checklist</h2>
+        <h2><span class="em" data-icon="backpack"></span> Equipment Checklist</h2>
         <p>Tick items off as you pack — your progress is saved on this device.</p>
       </div>
       <div class="panel">
@@ -151,7 +153,7 @@
 
     <section class="block" id="wildlife">
       <div class="block-head">
-        <h2><span class="em">🦌</span> Wildlife You May Meet</h2>
+        <h2><span class="em" data-icon="paw"></span> Wildlife You May Meet</h2>
         <p>Species recorded along this trail, and where to look.</p>
       </div>
       <div class="wild-grid" id="wild-grid"></div>
@@ -159,16 +161,16 @@
 
     <section class="block" id="pricing">
       <div class="block-head">
-        <h2><span class="em">💰</span> Operator Prices</h2>
+        <h2><span class="em" data-icon="wallet"></span> Operator Prices</h2>
         <p>10+ operators compared — cheapest highlighted. Rates are indicative (cross-checked with public listings, Jul 2026); tap any operator to verify today's price.</p>
       </div>
       <div class="price-list" id="price-list"></div>
-      <a class="pf-submit plan-cta" id="plan-cta" href="plan.html">🏔️ Plan this trek with us — free, within 24 h</a>
+      <a class="pf-submit plan-cta" id="plan-cta" href="plan.html"><span class="ic ic-light" data-icon="mountain"></span> Plan this trek with us — free, within 24 h</a>
     </section>
 
     <section class="block" id="fitness">
       <div class="block-head">
-        <h2><span class="em">💪</span> Fitness Required</h2>
+        <h2><span class="em" data-icon="dumbbell"></span> Fitness Required</h2>
         <p id="fitness-sub"></p>
       </div>
       <div class="panel">
@@ -179,7 +181,7 @@
 
     <section class="block" id="safety">
       <div class="block-head">
-        <h2><span class="em">🛟</span> Safety &amp; Altitude</h2>
+        <h2><span class="em" data-icon="shield"></span> Safety &amp; Altitude</h2>
         <p>Six rules that keep Himalayan trekkers out of trouble.</p>
       </div>
       <div class="safety-grid" id="safety-grid"></div>
@@ -196,6 +198,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/data2.js"></script>
+  <script src="js/data3.js"></script>
   <script src="js/images.js"></script>
   <script src="js/peaks.js"></script>
   <script src="js/shared.js"></script>

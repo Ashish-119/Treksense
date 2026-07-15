@@ -5,7 +5,8 @@
 const $ = sel => document.querySelector(sel);
 
 const trekId = new URLSearchParams(location.search).get("id");
-const trek = TREKS.find(t => t.id === trekId) || TREKS[0];
+const trek = TREKS.find(t => t.id === trekId) || (trekId ? null : TREKS[0]);
+if (!trek) location.replace("index.html");   // unknown id: don't render the wrong trek
 
 document.addEventListener("DOMContentLoaded", () => {
   $("#site-header").innerHTML = headerHTML("explore");
@@ -13,6 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
   updateThemeIcons();
 
   document.title = `${trek.name} — TrekSense`;
+
+  $("#back-btn").addEventListener("click", () =>
+    history.length > 1 ? history.back() : location.assign("index.html"));
 
   renderHero();
   renderStats();
@@ -76,7 +80,7 @@ function renderGallery() {
 
   const frame = (g, i) =>
     g.type === "photo"
-      ? `${sceneSVG(trek.scene, "gal" + i)}<img class="cover" src="${g.src}" alt="${trek.name} photo ${i + 1}" loading="lazy" onerror="this.remove()">`
+      ? `${sceneSVG(trek.scene, "gal" + i)}<img class="cover" src="${g.src}" alt="${trek.name} photo ${i + 1}" loading="lazy">`
       : sceneSVG(trek.scene, "gal" + i, g.mod);
 
   $("#gallery-strip").innerHTML = lbItems.map((g, i) => `
@@ -179,14 +183,14 @@ function renderRoute() {
   $("#route-iframe").src =
     `https://maps.google.com/maps?q=${lat},${lon}(${encodeURIComponent(label)})&t=p&z=12&output=embed`;
   $("#map-actions").innerHTML = `
-    <a class="map-btn" target="_blank" rel="noopener"
+    <a class="map-btn" target="_blank" rel="noopener noreferrer"
        href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trek.name + " trek " + label)}">
-       📍 Open in Google Maps</a>
-    <a class="map-btn" target="_blank" rel="noopener"
+       <i class="ic">${ICONS.pin}</i> Open in Google Maps</a>
+    <a class="map-btn" target="_blank" rel="noopener noreferrer"
        href="https://earth.google.com/web/@${lat},${lon},3500a,65000d,35y,0h,60t,0r">
-       🌍 Fly the terrain in Google Earth</a>
+       <i class="ic">${ICONS.globe}</i> Fly the terrain in Google Earth</a>
     <a class="map-btn" href="route.html?trek=${trek.id}">
-       🧭 Find your route from home</a>`;
+       <i class="ic">${ICONS.nav}</i> Find your route from home</a>`;
 }
 
 /* ---------- Weather ---------- */
@@ -267,7 +271,7 @@ function renderSegments() {
     </div>`).join("");
 
   $("#crux").innerHTML = `
-    <div class="c-icon">⚠️</div>
+    <div class="c-icon ic-hard">${ICONS.alert}</div>
     <div>
       <h4>The crux: ${trek.crux.name}</h4>
       <p>${trek.crux.why}</p>
@@ -282,7 +286,7 @@ function renderOxygen() {
       <div class="o2-track">
         <div class="o2-bar" data-w="${c.o2}">
           <span class="o2-tip">${c.name} · ${c.altFt} · ~${c.o2}% of sea-level O₂</span>
-          <span class="o2-val">${c.o2}%${c.o2 < 62 ? '<span class="warn">⚠️ thin air</span>' : ""}</span>
+          <span class="o2-val">${c.o2}%${c.o2 < 62 ? '<span class="warn">▲ thin air</span>' : ""}</span>
         </div>
       </div>
     </div>`).join("");
@@ -307,7 +311,7 @@ function renderCheckpoints() {
       <h4>${c.name} <span class="alt">${c.altFt}</span></h4>
       <p class="note">${c.note}</p>
       <div class="peak-row">
-        ${c.peaks.map(p => `<span class="peak">🏔️ ${p}</span>`).join("")}
+        ${c.peaks.map(p => `<span class="peak"><i class="ic">${ICONS.mountain}</i>${p}</span>`).join("")}
       </div>
     </div>`).join("");
 }
@@ -323,11 +327,11 @@ function renderGear() {
   const groups = JSON.parse(JSON.stringify(BASE_GEAR));
   groups["Trek-Specific"] = trek.extraGear;
   const done = gearState();
-  const catIcons = { "Clothing": "🧥", "Footwear": "🥾", "Gear": "🎒", "Health & Safety": "⛑️", "Trek-Specific": "✨" };
+  const catIcons = { "Clothing": `<i class="ic">${ICONS.sliders}</i>`, "Footwear": `<i class="ic">${ICONS.boot}</i>`, "Gear": `<i class="ic">${ICONS.backpack}</i>`, "Health & Safety": `<i class="ic">${ICONS.shield}</i>`, "Trek-Specific": `<i class="ic">${ICONS.star}</i>` };
 
   $("#gear-grid").innerHTML = Object.entries(groups).map(([cat, items]) => `
     <div class="gear-cat">
-      <h4>${catIcons[cat] || "•"} ${cat}</h4>
+      <h4>${catIcons[cat] || ""} ${cat}</h4>
       ${items.map(item => {
         const id = `${cat}::${item}`;
         return `
@@ -396,7 +400,7 @@ function renderPeaksVisible() {
   $("#peaks-grid").innerHTML = found.slice(0, 6).map(pk => `
     <figure class="peak-card">
       <div class="pk-media">
-        <img src="${pk.src}" alt="${pk.name}" loading="lazy" onerror="this.closest('.peak-card').remove()">
+        <img src="${pk.src}" alt="${pk.name}" loading="lazy">
       </div>
       <figcaption>
         <h4>${pk.name}</h4>
@@ -422,7 +426,7 @@ function renderPricing() {
         <div class="amount">${fmtINR(c.price)}</div>
         <small>per person</small>
       </div>
-      ${c.url ? `<a class="pr-link" href="${c.url}" target="_blank" rel="noopener">Verify ↗</a>` : ""}
+      ${c.url ? `<a class="pr-link" href="${c.url}" target="_blank" rel="noopener noreferrer">Verify ↗</a>` : ""}
     </div>`).join("");
 }
 
@@ -441,14 +445,14 @@ function renderFitness() {
       ${[1, 2, 3, 4, 5].map(i => `<i class="${i <= f.level ? "on" : ""}"></i>`).join("")}
     </div>
     <div class="fit-label">${f.label}<small>Level ${f.level} of 5 · ~${f.prepWeeks} weeks of prep</small></div>`;
-  $("#fit-req").innerHTML = f.reqs.map(r => `<li><span class="fi">${r.icon}</span><span>${r.text}</span></li>`).join("");
+  $("#fit-req").innerHTML = f.reqs.map(r => `<li><span class="fi ic-brand">${ICONS.checkCircle}</span><span>${r.text}</span></li>`).join("");
 }
 
 /* ---------- Safety ---------- */
 function renderSafety() {
   $("#safety-grid").innerHTML = SAFETY_TIPS.map(s => `
     <div class="safety-item">
-      <span class="si">${s.icon}</span>
+      <span class="si ic-brand">${ICONS.shield}</span>
       <div><b>${s.title}</b>${s.text}</div>
     </div>`).join("");
 }

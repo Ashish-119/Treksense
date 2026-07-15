@@ -600,7 +600,7 @@ const T2 = [
 ];
 
 /* ---------------- Expander: compact spec → full trek object ---------------- */
-(function expandT2() {
+function expandCompactTreks(T2) {
   const o2At = m => Math.round(100 * Math.exp(-m / 8434));
   const ftNum = s => parseInt(s.replace(/[^\d]/g, ""), 10);
   const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -678,7 +678,8 @@ const T2 = [
       fitness: { level: t.fit, label: fit.label, prepWeeks: fit.prepWeeks, reqs: fit.reqs }
     });
   });
-})();
+}
+expandCompactTreks(T2);
 
 /* ------------------------------------------------------------------
    Operator roster v2 — every trek compares ≥10 operators.
@@ -733,7 +734,7 @@ const OP_EXTRA_EXP = [
   ["Indiahikes", 1.1, 4.8, "Expedition protocol, oximeter checks"]
 ];
 
-(function ensureTenOperators() {
+function ensureTenOperators() {
   TREKS.forEach(t => {
     const isExp = t.difficulty === "Expedition";
     const pool = isExp ? OP_EXTRA_EXP : OP_EXTRA_TREK;
@@ -755,4 +756,5 @@ const OP_EXTRA_EXP = [
     t.companies.sort((a, b) => a.price - b.price);
     t.price = t.companies[0].price;   // card & stats always match the true minimum
   });
-})();
+}
+ensureTenOperators();

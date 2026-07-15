@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
       f.reportValidity();
       return;
     }
+    if (f.website.value) { f.reset(); return; }        // honeypot: silent drop for bots
     const trek = TREKS.find(t => t.id === f.trek.value);
     const enquiry = {
       at: new Date().toISOString(),
@@ -51,13 +52,15 @@ document.addEventListener("DOMContentLoaded", () => {
       experience,
       message: f.message.value.trim()
     };
-    const all = JSON.parse(localStorage.getItem("ts-inquiries") || "[]");
+    let all = [];
+    try { all = JSON.parse(localStorage.getItem("ts-inquiries") || "[]"); } catch {}
+    if (!Array.isArray(all)) all = [];
     all.push(enquiry);
-    localStorage.setItem("ts-inquiries", JSON.stringify(all));
+    localStorage.setItem("ts-inquiries", JSON.stringify(all.slice(-100)));  // cap stored enquiries
 
     $("#ps-summary").innerHTML =
-      `Thanks <b>${enquiry.name}</b> — we've logged your enquiry for <b>${enquiry.trek}</b>` +
-      `${enquiry.month !== "Flexible" ? ` in <b>${enquiry.month}</b>` : ""} (${enquiry.group}, ${enquiry.experience.toLowerCase()}).`;
+      `Thanks <b>${escapeHTML(enquiry.name)}</b> — we've logged your enquiry for <b>${escapeHTML(enquiry.trek)}</b>` +
+      `${enquiry.month !== "Flexible" ? ` in <b>${escapeHTML(enquiry.month)}</b>` : ""} (${escapeHTML(enquiry.group)}, ${escapeHTML(enquiry.experience.toLowerCase())}).`;
     f.classList.add("hide");
     $("#plan-success").classList.remove("hide");
   });

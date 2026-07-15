@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.open-meteo.com; frame-src https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Find Your Route — TrekSense</title>
   <meta name="description" content="Plan the journey from your city to any Himalayan trek — transport, time, distance and the towns on the way." />
@@ -41,18 +43,18 @@
       <div class="rf-grid">
         <div>
           <div class="panel rf-plan">
-            <h3>🧭 Recommended journey</h3>
+            <h3><i class="ic ic-brand" data-icon="compass"></i> Recommended journey</h3>
             <div id="rf-legs"></div>
             <div class="rf-tip" id="rf-tip"></div>
           </div>
 
           <div class="panel rf-modes">
-            <h3>🚉 Getting to <span id="rf-hub-name"></span></h3>
+            <h3><i class="ic ic-brand" data-icon="train"></i> Getting to <span id="rf-hub-name"></span></h3>
             <div id="rf-mode-rows"></div>
           </div>
 
           <div class="panel rf-via">
-            <h3>📍 On the way you'll pass</h3>
+            <h3><i class="ic ic-brand" data-icon="pin"></i> On the way you'll pass</h3>
             <div class="peak-row" id="rf-via-chips"></div>
           </div>
         </div>
@@ -75,6 +77,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/data2.js"></script>
+  <script src="js/data3.js"></script>
   <script src="js/images.js"></script>
   <script src="js/routesdata.js"></script>
   <script src="js/shared.js"></script>

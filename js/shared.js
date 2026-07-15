@@ -60,7 +60,29 @@ const ICONS = {
   star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-2.9-5.4 2.9 1.1-6L3.2 9.4l6.1-.8Z"/></svg>',
   calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5.5" width="16" height="15" rx="2.5"/><path d="M4 10h16M8.5 3.5v3M15.5 3.5v3"/></svg>',
   rupee: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10M7 8.5h10M7 4c5 0 6.5 1.8 6.5 4.5S12 13 7 13l7 7"/></svg>',
-  gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 18a8.5 8.5 0 1 1 14 0"/><path d="m12 14 3.5-4.5"/><circle cx="12" cy="14.5" r="1.6" fill="currentColor"/></svg>'
+  gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 18a8.5 8.5 0 1 1 14 0"/><path d="m12 14 3.5-4.5"/><circle cx="12" cy="14.5" r="1.6" fill="currentColor"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-2.5h6L17 8h3a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 18V9.5A1.5 1.5 0 0 1 4 8Z"/><circle cx="12" cy="13.5" r="3.5"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M4 15l5-5 4 3 7-7"/><path d="M16 6h4v4"/></svg>',
+  activity: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-7 5 14 2.5-7H21"/></svg>',
+  peaks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m2 20 5.5-10 3.5 6 4-8L22 20H2Z"/><path d="m7.5 10 1.5 2.5L10.5 10"/></svg>',
+  backpack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="7" width="12" height="14" rx="3"/><path d="M9 7V5a3 3 0 0 1 6 0v2M6 12h12M10 16h4"/></svg>',
+  paw: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="7" cy="8.5" r="1.7"/><circle cx="12" cy="6.5" r="1.7"/><circle cx="17" cy="8.5" r="1.7"/><path d="M12 11.5c-2.8 0-5.5 2.6-5.5 5a3 3 0 0 0 3 3c1 0 1.7-.4 2.5-.4s1.5.4 2.5.4a3 3 0 0 0 3-3c0-2.4-2.7-5-5.5-5Z"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><path d="M16.5 14.5h.5"/></svg>',
+  dumbbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z"/><path d="m9 12 2 2 4-4.5"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.5 20h19L12 4Z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 1 3.5 10.8c-.6.5-1 1.3-1 2.2h-5c0-.9-.4-1.7-1-2.2A6 6 0 0 1 12 3Z"/></svg>',
+  plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 3 10.5l6 2.5M21 3l-7.5 18-2.5-6M21 3 9 13"/></svg>',
+  train: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="13.5" rx="2.5"/><path d="M5 10.5h14"/><path d="M9 14h.01M15 14h.01"/><path d="m8 20.5 1.5-3M16 20.5 14.5 17.5"/></svg>',
+  bus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="13" rx="2.5"/><path d="M4 10h16"/><path d="M8 20.5v-3M16 20.5v-3"/><path d="M8 14h.01M16 14h.01"/></svg>',
+  car: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5 5.5 9A2 2 0 0 1 7.5 7.5h9A2 2 0 0 1 18.5 9L20 16.5"/><rect x="3" y="12.5" width="18" height="5.5" rx="1.5"/><path d="M7 15.5h.01M17 15.5h.01"/></svg>',
+  city: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 21V8l5-3v16M9 21V11l6 2v8M15 21V9l5 2v10M2.5 21h19"/></svg>',
+  boot: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18v-8a1 1 0 0 1 1-1h4.5L12 13.5h4.5a2.5 2.5 0 0 1 2.5 2.5v2H5Z"/><path d="M7.5 9v2M9.5 9v2"/></svg>',
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2.5 3.5L16 11H5"/></svg>',
+  checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 5-6"/></svg>',
+  globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9S14.5 18.5 12 21c-2.5-2.5-3.8-5.7-3.8-9S9.5 5.5 12 3Z"/></svg>',
+  nav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2.5-7.5L3 11Z"/></svg>',
 };
 
 /* ---------- Scene palettes & SVG generator ---------- */
@@ -188,7 +210,7 @@ function trekPhotos(id) {
 function coverMedia(trek, uid) {
   const photos = trekPhotos(trek.id);
   const img = photos.length
-    ? `<img class="cover" src="${photos[0].src}" alt="${trek.name}" loading="lazy" onerror="this.remove()">`
+    ? `<img class="cover" src="${photos[0].src}" alt="${trek.name}" loading="lazy" decoding="async">`
     : "";
   return sceneSVG(trek.scene, uid) + img;
 }
@@ -242,4 +264,27 @@ function bottomNavHTML(active) {
     <a href="route.html" data-nav="route" class="${active === "route" ? "active" : ""}">${ICONS.pin}<span>Route</span></a>
     <a href="plan.html" data-nav="plan" class="${active === "plan" ? "active" : ""}">${ICONS.route}<span>With Us</span></a>
     <a href="index.html#/saved" data-nav="saved" class="${active === "saved" ? "active" : ""}">${ICONS.bookmark}<span>Saved</span></a>`;
+}
+
+/* Fill professional icons into any element carrying data-icon="name" */
+function hydrateIcons(root) {
+  (root || document).querySelectorAll("[data-icon]").forEach(el => {
+    el.innerHTML = ICONS[el.dataset.icon] || "";
+  });
+}
+document.addEventListener("DOMContentLoaded", () => hydrateIcons());
+
+/* Broken images: peel back to the SVG scene / drop the card (CSP-safe, no inline handlers) */
+document.addEventListener("error", e => {
+  const t = e.target;
+  if (t && t.tagName === "IMG") {
+    const card = t.closest(".peak-card");
+    card ? card.remove() : t.remove();
+  }
+}, true);
+
+/* Escape untrusted text before injecting into innerHTML */
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }

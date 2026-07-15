@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src https://api.open-meteo.com; frame-src https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Trek With Us — TrekSense</title>
   <meta name="description" content="Tell us where you want to go — we'll plan your Himalayan trek end to end." />
@@ -18,32 +20,33 @@
   <main class="container plan-main">
     <div class="plan-hero">
       <div class="plan-hero-text">
-        <span class="plan-kicker">🏔️ Trek With Us</span>
+        <span class="plan-kicker"><i class="ic" data-icon="mountain"></i> Trek With Us</span>
         <h1>Tell us the mountain.<br />We'll handle the rest.</h1>
         <p>Share a few details and we'll get back within 24 hours with a plan — batch dates, honest difficulty advice, gear help and the best price we can find.</p>
         <div class="plan-points">
-          <div class="pp">✅ <b>Local, certified guides</b> on every trail</div>
-          <div class="pp">🫁 <b>Acclimatisation-first</b> itineraries</div>
-          <div class="pp">💰 <b>Price-match</b> across 10+ operators</div>
-          <div class="pp">📞 <b>Human answers</b>, not chatbots</div>
+          <div class="pp"><i class="ic ic-brand" data-icon="checkCircle"></i> <b>Local, certified guides</b> on every trail</div>
+          <div class="pp"><i class="ic ic-brand" data-icon="activity"></i> <b>Acclimatisation-first</b> itineraries</div>
+          <div class="pp"><i class="ic ic-brand" data-icon="wallet"></i> <b>Price-match</b> across 10+ operators</div>
+          <div class="pp"><i class="ic ic-brand" data-icon="shield"></i> <b>Human answers</b>, not chatbots</div>
         </div>
       </div>
 
       <div class="panel plan-form-card">
         <form id="plan-form" novalidate>
+          <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true" />
           <h3>Plan my trek</h3>
           <div class="pf-grid">
             <label class="pf-field">
               <span>Your name *</span>
-              <input type="text" name="name" required placeholder="Tenzing Norgay" />
+              <input type="text" name="name" required maxlength="80" autocomplete="name" placeholder="Tenzing Norgay" />
             </label>
             <label class="pf-field">
               <span>Email *</span>
-              <input type="email" name="email" required placeholder="you@example.com" />
+              <input type="email" name="email" required maxlength="120" autocomplete="email" placeholder="you@example.com" />
             </label>
             <label class="pf-field">
               <span>Phone / WhatsApp</span>
-              <input type="tel" name="phone" placeholder="+91 98xxxxxx00" />
+              <input type="tel" name="phone" maxlength="20" autocomplete="tel" pattern="[+0-9()\-\s]*" placeholder="+91 98xxxxxx00" />
             </label>
             <label class="pf-field">
               <span>Which trek? *</span>
@@ -76,7 +79,7 @@
             </label>
             <label class="pf-field pf-wide">
               <span>Anything else?</span>
-              <textarea name="message" rows="3" placeholder="Fitness worries, budget, dates you must avoid, dietary needs…"></textarea>
+              <textarea name="message" rows="3" maxlength="1000" placeholder="Fitness worries, budget, dates you must avoid, dietary needs…"></textarea>
             </label>
           </div>
           <button type="submit" class="pf-submit">Send my enquiry →</button>
@@ -94,7 +97,7 @@
     </div>
 
     <div class="plan-strip">
-      <div class="ps-stat"><b>55</b><span>treks &amp; expeditions</span></div>
+      <div class="ps-stat"><b>120</b><span>treks &amp; expeditions</span></div>
       <div class="ps-stat"><b>2×</b><span>certified guides per batch</span></div>
       <div class="ps-stat"><b>24 h</b><span>reply time</span></div>
       <div class="ps-stat"><b>10+</b><span>operators compared</span></div>
@@ -111,6 +114,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/data2.js"></script>
+  <script src="js/data3.js"></script>
   <script src="js/images.js"></script>
   <script src="js/shared.js"></script>
   <script src="js/effects.js"></script>
