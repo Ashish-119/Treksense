@@ -253,7 +253,7 @@ function headerHTML(active) {
       <a href="plan.html" data-nav="plan" class="${active === "plan" ? "active" : ""}">Trek With Us</a>
     </nav>
     <div class="header-actions">
-      <button class="icon-btn" data-theme-icon onclick="toggleTheme()" aria-label="Toggle dark mode"></button>
+      <button class="icon-btn" data-theme-icon data-theme-toggle aria-label="Toggle dark mode"></button>
     </div>
   </div>`;
 }
@@ -265,6 +265,12 @@ function bottomNavHTML(active) {
     <a href="plan.html" data-nav="plan" class="${active === "plan" ? "active" : ""}">${ICONS.route}<span>With Us</span></a>
     <a href="index.html#/saved" data-nav="saved" class="${active === "saved" ? "active" : ""}">${ICONS.bookmark}<span>Saved</span></a>`;
 }
+
+/* Theme toggle button (CSP-safe: no inline onclick, delegated so it works
+   regardless of when/where the header markup gets injected) */
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-theme-toggle]")) toggleTheme();
+});
 
 /* Fill professional icons into any element carrying data-icon="name" */
 function hydrateIcons(root) {
