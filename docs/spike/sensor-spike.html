@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="color-scheme" content="dark" />
+<title>Peak Finder — Stage 0 Sensor Spike</title>
+<style>
+  :root { --bg:#0d1116; --panel:#161c23; --line:#2a323c; --ink:#e9eae5; --dim:#8b939d;
+          --accent:#e0913f; --good:#57c98a; --bad:#e0715a; --warn:#e6a94b;
+          --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--mono); overflow:hidden;
+         font-size:13px; line-height:1.45; }
+
+  /* ---- gate ---- */
+  #gate { position:fixed; inset:0; z-index:50; background:var(--bg); padding:24px;
+          display:flex; flex-direction:column; gap:16px; overflow-y:auto; }
+  #gate h1 { font-size:16px; letter-spacing:.02em; }
+  #gate p { color:var(--dim); font-size:12px; max-width:44ch; }
+  #preflight { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  #preflight div { display:flex; justify-content:space-between; gap:10px; padding:9px 12px;
+                   border-top:1px solid var(--line); font-size:12px; }
+  #preflight div:first-child { border-top:0; }
+  #preflight .v { color:var(--dim); }
+  #preflight .v.ok { color:var(--good); } #preflight .v.no { color:var(--bad); } #preflight .v.warn { color:var(--warn); }
+  .btn { background:var(--accent); color:#111; border:0; border-radius:10px; font:inherit;
+         font-weight:700; padding:15px 20px; cursor:pointer; font-size:14px; }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:400; }
+  .btn:disabled { opacity:.4; }
+
+  /* ---- stage ---- */
+  #stage { position:fixed; inset:0; z-index:1; display:none; }
+  #cam { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#20262e; }
+  #overlay { position:absolute; inset:0; }
+
+  #topbar { position:absolute; top:0; left:0; right:0; padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;
+            background:linear-gradient(#000a,transparent); display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  #hdgBig { font-size:30px; font-weight:700; letter-spacing:-.01em; text-shadow:0 1px 4px #000; }
+  #hdgBig small { font-size:12px; font-weight:400; color:var(--dim); }
+  #srcTag { font-size:10px; padding:3px 7px; border-radius:5px; background:#0009; border:1px solid var(--line);
+            max-width:52vw; text-align:right; }
+  #srcTag.mag { color:var(--warn); } #srcTag.tru { color:var(--good); } #srcTag.rel { color:var(--bad); }
+
+  .tick-strip { position:absolute; top:64px; left:0; right:0; height:26px; overflow:hidden;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); }
+  .tick-strip i { position:absolute; top:8px; width:1px; height:8px; background:#fff9; }
+  .tick-strip i.maj { height:15px; top:2px; background:#fff; }
+  .tick-strip b { position:absolute; top:12px; transform:translateX(-50%); font-size:11px; font-weight:700; color:#fff; text-shadow:0 1px 3px #000; }
+
+  #reticle { position:absolute; top:50%; left:50%; width:2px; height:64px; background:#fff8; transform:translate(-50%,-50%); }
+  #reticle::after { content:""; position:absolute; top:50%; left:50%; width:64px; height:2px; background:#fff8; transform:translate(-50%,-50%); }
+
+  #target { position:absolute; transform:translate(-50%,-50%); background:#000b; border:1px solid var(--accent);
+            border-radius:6px; padding:6px 10px; font-size:12px; font-weight:700; white-space:nowrap; text-align:center;
+            box-shadow:0 0 0 1px #000; }
+  #target.lock { background:var(--good); color:#0a0e12; border-color:var(--good); }
+  #target small { display:block; font-weight:400; font-size:10px; opacity:.8; }
+  #target .stem { position:absolute; left:50%; top:100%; width:1px; height:34px; background:var(--accent); transform:translateX(-50%); }
+  #target.lock .stem { background:#0a0e12; }
+
+  /* ---- sheet ---- */
+  #sheet { position:absolute; left:0; right:0; bottom:0; background:var(--panel);
+           border-top:1px solid var(--line); border-radius:14px 14px 0 0;
+           padding:8px 12px calc(env(safe-area-inset-bottom) + 12px); max-height:64vh; overflow-y:auto;
+           transition:transform .25s ease; }
+  #sheet.min { transform:translateY(calc(100% - 96px)); }
+  #grab { width:34px; height:4px; border-radius:2px; background:#4a545f; margin:4px auto 10px; }
+
+  .rows { border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:12px; }
+  .rows > div { display:flex; justify-content:space-between; gap:12px; padding:7px 11px; border-top:1px solid var(--line); font-size:11.5px; }
+  .rows > div:first-child { border-top:0; }
+  .rows .k { color:var(--dim); flex:none; }
+  .rows .val { text-align:right; word-break:break-word; }
+  .rows .val.ok { color:var(--good); } .rows .val.no { color:var(--bad); } .rows .val.warn { color:var(--warn); }
+
+  .grp { margin-bottom:12px; }
+  .grp h2 { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); margin-bottom:7px; }
+  .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .ctl label { font-size:11px; color:var(--dim); }
+  input[type=number], select { background:var(--bg); color:var(--ink); border:1px solid var(--line);
+      border-radius:6px; padding:7px 8px; font:inherit; font-size:12px; width:72px; }
+  select { width:auto; }
+  input[type=range] { flex:1; min-width:120px; accent-color:var(--accent); }
+  .mini { font-size:11px; padding:9px 12px; border-radius:8px; }
+
+  #jitOut, #checkOut { font-size:11px; color:var(--dim); white-space:pre-wrap; margin-top:6px; }
+  #jitVerdict { font-weight:700; }
+  #spark { width:100%; height:40px; display:block; margin-top:6px; background:var(--bg); border:1px solid var(--line); border-radius:6px; }
+
+  .toast { position:fixed; left:50%; bottom:22%; transform:translateX(-50%); background:#000d; border:1px solid var(--line);
+           padding:10px 16px; border-radius:8px; font-size:12px; z-index:40; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>Peak Finder · Stage 0 sensor spike</h1>
+  <p>Confirms camera, compass, tilt and GPS behave on this device, and measures compass jitter.
+     Serve this over <b>HTTPS from your own origin</b> — camera and motion sensors are blocked otherwise.</p>
+
+  <div id="preflight">
+    <div><span>Secure context (HTTPS)</span><span class="v" id="pf-secure">—</span></div>
+    <div><span>Camera API</span><span class="v" id="pf-cam">—</span></div>
+    <div><span>DeviceOrientation API</span><span class="v" id="pf-do">—</span></div>
+    <div><span>iOS permission gesture needed</span><span class="v" id="pf-iosperm">—</span></div>
+    <div><span>Absolute orientation event</span><span class="v" id="pf-abs">—</span></div>
+    <div><span>Geolocation API</span><span class="v" id="pf-geo">—</span></div>
+  </div>
+
+  <button class="btn" id="startBtn">Start spike &amp; grant permissions</button>
+  <button class="btn ghost" id="skipCam">Sensors only (skip camera)</button>
+  <p id="gateErr" style="color:var(--bad)"></p>
+  <p>Blueprint Stage 0 DoD: the target label sits on the correct compass direction within ±5° and does
+     not visibly drift while the phone is held still.</p>
+</div>
+
+<div id="stage">
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="overlay">
+    <div id="topbar">
+      <div><div id="hdgBig">—<small>°</small></div></div>
+      <div id="srcTag">source: —</div>
+    </div>
+    <div class="tick-strip"><div id="ticks" style="position:absolute;top:0;height:100%"></div></div>
+    <div id="reticle"></div>
+    <div id="target" hidden>TARGET<small>—</small><span class="stem"></span></div>
+
+    <div id="sheet">
+      <div id="grab"></div>
+
+      <div class="rows" id="live"></div>
+
+      <div class="grp">
+        <h2>Target label</h2>
+        <div class="ctl">
+          <label>true bearing°</label><input type="number" id="tBrg" value="0" min="0" max="359" step="1" />
+          <label>assumed hFOV°</label><input type="number" id="tFov" value="55" min="30" max="90" step="1" />
+        </div>
+        <div class="ctl">
+          <label>heading is</label>
+          <select id="assume">
+            <option value="mag">magnetic → add declination</option>
+            <option value="tru">already true north</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grp">
+        <h2>Smoothing (compare lag vs jitter)</h2>
+        <div class="ctl">
+          <select id="smooth">
+            <option value="none">none (raw)</option>
+            <option value="ema" selected>low-pass / EMA</option>
+            <option value="comp">complementary (gyro + mag)</option>
+          </select>
+          <label>α</label><input type="range" id="alpha" min="0.02" max="0.5" step="0.01" value="0.18" />
+          <span id="alphaV" style="font-size:11px;color:var(--dim)">0.18</span>
+        </div>
+      </div>
+
+      <div class="grp">
+        <h2>Test 3 — standstill jitter (30 s)</h2>
+        <p style="color:var(--dim);font-size:11px;margin-bottom:6px">Lay the phone flat, still, pointing at a fixed mark. Don't touch it.</p>
+        <button class="btn mini" id="jitBtn">Start 30 s jitter test</button>
+        <canvas id="spark" width="600" height="80"></canvas>
+        <div id="jitOut"></div>
+      </div>
+
+      <div class="grp">
+        <h2>Test 4 — known-bearing check</h2>
+        <p style="color:var(--dim);font-size:11px;margin-bottom:6px">Aim the reticle at a landmark whose true bearing you know, enter it, log it.</p>
+        <div class="ctl">
+          <label>landmark true°</label><input type="number" id="ckBrg" min="0" max="359" step="1" />
+          <button class="btn mini" id="ckBtn">Log check</button>
+        </div>
+        <div id="checkOut"></div>
+      </div>
+
+      <div class="grp">
+        <h2>Export</h2>
+        <div class="ctl">
+          <button class="btn mini ghost" id="copyBtn">Copy JSON</button>
+          <button class="btn mini ghost" id="dlBtn">Download JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var norm360 = function (d) { return ((d % 360) + 360) % 360; };
+  var norm180 = function (d) { d = norm360(d); return d > 180 ? d - 360 : d; };
+  var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+
+  /* ---------------- preflight ---------------- */
+  var isSecure = window.isSecureContext;
+  var hasCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  var hasDO = typeof DeviceOrientationEvent !== "undefined";
+  var iosPerm = hasDO && typeof DeviceOrientationEvent.requestPermission === "function";
+  var hasGeo = "geolocation" in navigator;
+  function setv(id, txt, cls) { var e = $(id); e.textContent = txt; e.className = "v " + (cls || ""); }
+  setv("pf-secure", isSecure ? "yes" : "NO — sensors will fail", isSecure ? "ok" : "no");
+  setv("pf-cam", hasCam ? "present" : "missing", hasCam ? "ok" : "no");
+  setv("pf-do", hasDO ? "present" : "missing", hasDO ? "ok" : "no");
+  setv("pf-iosperm", iosPerm ? "yes (iOS 13+)" : "no", iosPerm ? "warn" : "ok");
+  setv("pf-abs", "shown in live panel", "");
+  setv("pf-geo", hasGeo ? "present" : "missing", hasGeo ? "ok" : "no");
+
+  /* ---------------- state ---------------- */
+  var S = {
+    rawHeading: null, headingSource: "none", sawAbsolute: false, lastAbsoluteAt: 0,
+    smoothed: null, pitch: 0, roll: 0, gyroRate: null, lastOrientAt: 0, evTimes: [],
+    pos: null, posAgeStart: 0, camInfo: null, screenAngle: 0,
+    checks: [], jitter: null, startedAt: Date.now()
+  };
+  var DECL_METHOD = "regional-constant-2026 (coarse; replace with WMM in Stage 3)";
+
+  // Coarse magnetic declination for the Indian Himalaya, epoch ~2026 (deg East positive).
+  // Good to roughly ±0.5°. The spike's job is to find out if the phone even needs this.
+  function declination(lat, lon) {
+    if (lat == null) return 0.8;
+    var d = 0.6 + (78 - lon) * 0.30 + (lat - 30) * 0.12;
+    return clamp(d, -1.5, 4);
+  }
+
+  /* ---------------- start / permissions ---------------- */
+  $("startBtn").addEventListener("click", function () { boot(true); });
+  $("skipCam").addEventListener("click", function () { boot(false); });
+
+  async function boot(withCam) {
+    $("gateErr").textContent = "";
+    // motion/orientation permission (iOS needs the gesture we're inside now)
+    try {
+      if (iosPerm) {
+        var r = await DeviceOrientationEvent.requestPermission();
+        if (r !== "granted") $("gateErr").textContent = "Orientation permission denied — heading will be unavailable.";
+      }
+      if (typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function") {
+        try { await DeviceMotionEvent.requestPermission(); } catch (e) {}
+      }
+    } catch (e) { $("gateErr").textContent = "Permission error: " + e.message; }
+
+    window.addEventListener("deviceorientationabsolute", onOrient, true);
+    window.addEventListener("deviceorientation", onOrient, true);
+    if (typeof DeviceMotionEvent !== "undefined") window.addEventListener("devicemotion", onMotion, true);
+
+    if (hasGeo) {
+      navigator.geolocation.watchPosition(function (p) {
+        S.pos = { lat: p.coords.latitude, lon: p.coords.longitude, alt: p.coords.altitude,
+                  acc: p.coords.accuracy, altAcc: p.coords.altitudeAccuracy, t: p.timestamp };
+      }, function (err) { S.pos = { error: err.code + " " + err.message }; },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+    }
+
+    if (withCam && hasCam) {
+      try {
+        var stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        $("cam").srcObject = stream;
+        var tr = stream.getVideoTracks()[0];
+        var caps = tr.getCapabilities ? tr.getCapabilities() : {};
+        var set = tr.getSettings ? tr.getSettings() : {};
+        S.camInfo = { label: tr.label, facing: set.facingMode, w: set.width, h: set.height,
+                      frameRate: set.frameRate, hasFovCap: !!(caps && (caps.focalLength || caps.fieldOfView)),
+                      caps: Object.keys(caps || {}) };
+      } catch (e) {
+        S.camInfo = { error: e.name + ": " + e.message };
+        $("cam").style.background = "#20262e";
+      }
+    } else {
+      S.camInfo = { skipped: true };
+    }
+
+    updateScreenAngle();
+    window.addEventListener("orientationchange", updateScreenAngle);
+    if (screen.orientation) screen.orientation.addEventListener("change", updateScreenAngle);
+
+    $("gate").style.display = "none";
+    $("stage").style.display = "block";
+    requestAnimationFrame(loop);
+  }
+
+  function updateScreenAngle() {
+    S.screenAngle = (screen.orientation && typeof screen.orientation.angle === "number")
+      ? screen.orientation.angle : (typeof window.orientation === "number" ? window.orientation : 0);
+  }
+
+  /* ---------------- sensor handlers ---------------- */
+  function onOrient(e) {
+    var now = performance.now();
+    S.evTimes.push(now); if (S.evTimes.length > 60) S.evTimes.shift();
+    S.lastOrientAt = Date.now();
+
+    var isAbs = e.absolute === true || e.type === "deviceorientationabsolute";
+    var h = null, src = S.headingSource;
+
+    if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) {
+      h = e.webkitCompassHeading;                 // iOS: degrees clockwise from TRUE north
+      src = "ios:webkitCompassHeading (true)";
+      S.sawAbsolute = true; S.lastAbsoluteAt = now;
+    } else if (isAbs && typeof e.alpha === "number") {
+      h = norm360(360 - e.alpha);                 // W3C absolute: alpha CCW from north
+      src = "w3c:absolute alpha";
+      S.sawAbsolute = true; S.lastAbsoluteAt = now;
+    } else if (typeof e.alpha === "number") {
+      if (now - S.lastAbsoluteAt < 1500) return;  // we already have a better source
+      h = norm360(360 - e.alpha);
+      src = "w3c:RELATIVE alpha (unreliable)";
+    }
+    if (h == null) return;
+
+    // screen-orientation compensation (keep spike in portrait; this just corrects if not)
+    h = norm360(h + S.screenAngle);
+
+    S.rawHeading = h;
+    S.headingSource = src;
+    if (typeof e.beta === "number") S.pitch = e.beta - 90;   // ~0 when looking at horizon
+    if (typeof e.gamma === "number") S.roll = e.gamma;
+
+    if (S.jitter && !S.jitter.done) S.jitter.samples.push({ t: Date.now(), h: h });
+  }
+
+  function onMotion(e) {
+    if (e.rotationRate && typeof e.rotationRate.alpha === "number") {
+      S.gyroRate = e.rotationRate.alpha; // deg/s about z
+    }
+  }
+
+  /* ---------------- smoothing ---------------- */
+  var lastSmoothAt = 0;
+  function smoothHeading() {
+    var raw = S.rawHeading;
+    if (raw == null) return null;
+    var mode = $("smooth").value, a = parseFloat($("alpha").value);
+    var now = performance.now(), dt = lastSmoothAt ? (now - lastSmoothAt) / 1000 : 0; lastSmoothAt = now;
+    if (mode === "none" || S.smoothed == null) { S.smoothed = raw; return raw; }
+    if (mode === "comp" && S.gyroRate != null && dt > 0 && dt < 0.5) {
+      var pred = norm360(S.smoothed - S.gyroRate * dt);       // gyro integrates (sign: alpha CCW)
+      S.smoothed = norm360(pred + a * norm180(raw - pred));
+    } else {
+      S.smoothed = norm360(S.smoothed + a * norm180(raw - S.smoothed));
+    }
+    return S.smoothed;
+  }
+
+  /* ---------------- render loop ---------------- */
+  var cards = { 0:"N",45:"NE",90:"E",135:"SE",180:"S",225:"SW",270:"W",315:"NW" };
+  var frame = 0;
+  function loop() {
+    frame++;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var hFOV = clamp(parseFloat($("tFov").value) || 55, 30, 90);
+    var raw = S.rawHeading, sm = smoothHeading();
+
+    var decl = S.pos && !S.pos.error ? declination(S.pos.lat, S.pos.lon) : declination(null, 78);
+    var assume = $("assume").value;
+    var trueHdg = sm == null ? null : (assume === "mag" ? norm360(sm + decl) : sm);
+
+    // big readout
+    if (sm == null) { $("hdgBig").innerHTML = "—<small>°</small>"; }
+    else {
+      var dir = cards[(Math.round(norm360(trueHdg) / 45) * 45) % 360] || "";
+      $("hdgBig").innerHTML = Math.round(norm360(trueHdg)) + "<small>° " + dir + " true</small>";
+    }
+    var st = $("srcTag");
+    st.textContent = S.headingSource;
+    st.className = /true/.test(S.headingSource) ? "tru" : /RELATIVE/.test(S.headingSource) ? "rel" : /absolute/.test(S.headingSource) ? "mag" : "";
+
+    // tick strip
+    if (trueHdg != null) drawTicks(trueHdg, hFOV, vw);
+
+    // target label
+    var tEl = $("target");
+    var tBrg = norm360(parseFloat($("tBrg").value) || 0);
+    if (trueHdg == null) { tEl.hidden = true; }
+    else {
+      var delta = norm180(tBrg - trueHdg);
+      if (Math.abs(delta) > hFOV / 2 + 12) { tEl.hidden = true; }
+      else {
+        tEl.hidden = false;
+        var ppdV = vh / (hFOV * 1.35);
+        tEl.style.left = (0.5 + delta / hFOV) * vw + "px";
+        tEl.style.top = clamp(vh * 0.5 - S.pitch * ppdV, 90, vh - 160) + "px";
+        var locked = Math.abs(delta) <= 2;
+        tEl.classList.toggle("lock", locked);
+        tEl.firstChild.textContent = "TARGET " + Math.round(tBrg) + "°";
+        tEl.querySelector("small").textContent = (delta >= 0 ? "+" : "") + delta.toFixed(1) + "° off";
+      }
+    }
+
+    // live rows — 10 Hz is plenty for a text table
+    if (frame === 1 || frame % 6 === 0) renderLive(raw, sm, trueHdg, decl, hFOV);
+
+    // jitter progress
+    if (S.jitter && !S.jitter.done && Date.now() - S.jitter.t0 >= 30000) finishJitter();
+
+    requestAnimationFrame(loop);
+  }
+
+  function drawTicks(trueHdg, hFOV, vw) {
+    var box = $("ticks"); box.innerHTML = "";
+    var ppd = vw / hFOV;
+    var base = Math.round(trueHdg / 5) * 5;
+    for (var d = -Math.ceil(hFOV / 2) - 5; d <= hFOV / 2 + 5; d += 5) {
+      var brg = norm360(base + d);
+      var off = norm180(brg - trueHdg);
+      var left = vw / 2 + off * ppd;
+      var maj = brg % 45 === 0;
+      var i = document.createElement("i");
+      i.className = maj ? "maj" : ""; i.style.left = left + "px";
+      box.appendChild(i);
+      if (maj) { var b = document.createElement("b"); b.style.left = left + "px"; b.textContent = cards[brg]; box.appendChild(b); }
+    }
+  }
+
+  function hzRate() {
+    if (S.evTimes.length < 2) return 0;
+    var span = (S.evTimes[S.evTimes.length - 1] - S.evTimes[0]) / 1000;
+    return span > 0 ? (S.evTimes.length - 1) / span : 0;
+  }
+
+  function row(k, v, cls) { return '<div><span class="k">' + k + '</span><span class="val ' + (cls || "") + '">' + v + "</span></div>"; }
+  function renderLive(raw, sm, trueHdg, decl, hFOV) {
+    var p = S.pos;
+    var lagNote = $("smooth").value === "none" ? "—" : (Math.abs(norm180((sm || 0) - (raw || 0))).toFixed(1) + "° behind raw");
+    var html =
+      row("raw heading (mag frame)", raw == null ? "—" : raw.toFixed(1) + "°", raw == null ? "no" : "") +
+      row("smoothed", sm == null ? "—" : sm.toFixed(1) + "°") +
+      row("smoothing lag", lagNote) +
+      row("event rate", hzRate().toFixed(0) + " Hz", hzRate() < 8 ? "warn" : "ok") +
+      row("source", S.headingSource, /true/.test(S.headingSource) ? "ok" : /RELATIVE/.test(S.headingSource) ? "no" : "warn") +
+      row("absolute seen", S.sawAbsolute ? "yes" : "NO", S.sawAbsolute ? "ok" : "no") +
+      row("declination used", decl.toFixed(2) + "° E · " + DECL_METHOD.split(" ")[0]) +
+      row("pitch (look angle)", S.pitch.toFixed(1) + "°") +
+      row("roll", S.roll.toFixed(1) + "°") +
+      row("gyro rate z", S.gyroRate == null ? "— (no devicemotion)" : S.gyroRate.toFixed(1) + " °/s", S.gyroRate == null ? "warn" : "") +
+      row("screen angle", S.screenAngle + "°") +
+      row("position", p == null ? "acquiring…" : p.error ? p.error : (p.lat.toFixed(5) + ", " + p.lon.toFixed(5)), p && p.error ? "no" : "") +
+      row("gps accuracy", p && !p.error ? Math.round(p.acc) + " m" : "—", p && !p.error && p.acc > 30 ? "warn" : "") +
+      row("gps altitude", p && !p.error ? (p.alt == null ? "null (not provided)" : Math.round(p.alt) + " m ±" + (p.altAcc == null ? "?" : Math.round(p.altAcc))) : "—", p && !p.error && p.alt == null ? "warn" : "") +
+      row("camera", S.camInfo == null ? "—" : S.camInfo.error ? S.camInfo.error : S.camInfo.skipped ? "skipped" : (S.camInfo.w + "×" + S.camInfo.h + " " + (S.camInfo.facing || "?")), S.camInfo && S.camInfo.error ? "no" : "") +
+      row("camera FOV exposed", S.camInfo && S.camInfo.hasFovCap ? "yes" : "no → calibrate in Stage 3", "warn");
+    $("live").innerHTML = html;
+  }
+
+  /* ---------------- jitter test ---------------- */
+  $("jitBtn").addEventListener("click", function () {
+    S.jitter = { t0: Date.now(), samples: [], done: false };
+    $("jitOut").textContent = "collecting… hold still";
+    this.disabled = true;
+  });
+
+  function circMean(arr) {
+    var s = 0, c = 0;
+    arr.forEach(function (h) { s += Math.sin(h * Math.PI / 180); c += Math.cos(h * Math.PI / 180); });
+    return norm360(Math.atan2(s, c) * 180 / Math.PI);
+  }
+  function finishJitter() {
+    var J = S.jitter; J.done = true;
+    var hs = J.samples.map(function (x) { return x.h; });
+    $("jitBtn").disabled = false;
+    if (hs.length < 10) { $("jitOut").textContent = "too few samples (" + hs.length + ") — sensor not delivering data"; return; }
+    var mean = circMean(hs);
+    var dev = hs.map(function (h) { return norm180(h - mean); });
+    var sd = Math.sqrt(dev.reduce(function (a, b) { return a + b * b; }, 0) / dev.length);
+    var p2p = Math.max.apply(null, dev) - Math.min.apply(null, dev);
+    var rate = hs.length / 30;
+    var verdict = p2p < 3 ? "EMA (α≈0.15–0.2) is enough"
+      : p2p < 8 ? "Complementary filter recommended (gyro + mag)"
+      : "Complementary filter + user drag-to-align both required";
+    J.stats = { n: hs.length, rateHz: +rate.toFixed(1), meanDeg: +mean.toFixed(1), sdDeg: +sd.toFixed(2), p2pDeg: +p2p.toFixed(2), verdict: verdict };
+    $("jitOut").innerHTML = "samples " + hs.length + " @ " + rate.toFixed(1) + " Hz\n" +
+      "mean " + mean.toFixed(1) + "°   σ " + sd.toFixed(2) + "°   peak-to-peak " + p2p.toFixed(2) + "°\n" +
+      '<span id="jitVerdict">→ ' + verdict + "</span>";
+    drawSpark(dev);
+  }
+  function drawSpark(dev) {
+    var cv = $("spark"), x = cv.getContext("2d"); cv.width = cv.clientWidth * 2; cv.height = 80;
+    x.clearRect(0, 0, cv.width, cv.height);
+    var mx = Math.max(3, Math.max.apply(null, dev.map(Math.abs)));
+    x.strokeStyle = "#3a444f"; x.beginPath(); x.moveTo(0, 40); x.lineTo(cv.width, 40); x.stroke();
+    x.strokeStyle = "#e0913f"; x.beginPath();
+    dev.forEach(function (d, i) {
+      var px = i / (dev.length - 1) * cv.width, py = 40 - d / mx * 34;
+      i ? x.lineTo(px, py) : x.moveTo(px, py);
+    });
+    x.stroke();
+    x.fillStyle = "#8b939d"; x.font = "18px monospace"; x.fillText("±" + mx.toFixed(1) + "°", 6, 16);
+  }
+
+  /* ---------------- known-bearing check ---------------- */
+  $("ckBtn").addEventListener("click", function () {
+    var actual = parseFloat($("ckBrg").value);
+    if (isNaN(actual)) { toast("enter the landmark's true bearing"); return; }
+    var raw = S.rawHeading;
+    if (raw == null) { toast("no heading yet"); return; }
+    var decl = S.pos && !S.pos.error ? declination(S.pos.lat, S.pos.lon) : declination(null, 78);
+    var errIfTrue = norm180(raw - actual);
+    var errIfMag = norm180(raw + decl - actual);
+    var rec = { ts: new Date().toISOString(), actualTrue: actual, rawHeading: +raw.toFixed(1),
+      declination: +decl.toFixed(2), errorIfRawIsTrue: +errIfTrue.toFixed(1), errorIfRawIsMagnetic: +errIfMag.toFixed(1),
+      source: S.headingSource, pos: S.pos && !S.pos.error ? [ +S.pos.lat.toFixed(5), +S.pos.lon.toFixed(5) ] : null };
+    S.checks.push(rec);
+    var best = Math.abs(errIfTrue) <= Math.abs(errIfMag) ? "raw≈TRUE (err " + errIfTrue.toFixed(1) + "°)" : "raw≈MAGNETIC (err " + errIfMag.toFixed(1) + "°)";
+    var lines = S.checks.slice(-5).map(function (c, i) {
+      return "#" + (S.checks.length - Math.min(5, S.checks.length) + i + 1) + "  target " + c.actualTrue +
+        "°  raw " + c.rawHeading + "°  →true " + c.errorIfRawIsTrue + "°  →mag " + c.errorIfRawIsMagnetic + "°";
+    });
+    $("checkOut").textContent = lines.join("\n") + "\n\nlatest: " + best;
+    toast("logged check #" + S.checks.length);
+  });
+
+  /* ---------------- export ---------------- */
+  function sessionJSON() {
+    return JSON.stringify({
+      spike: "peak-finder-stage-0", generatedAt: new Date().toISOString(),
+      userAgent: navigator.userAgent, platform: navigator.platform,
+      screen: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio, angle: S.screenAngle },
+      preflight: { secureContext: isSecure, cameraApi: hasCam, deviceOrientationApi: hasDO, iosPermissionGesture: iosPerm, geolocationApi: hasGeo },
+      detected: {
+        headingSource: S.headingSource, sawAbsoluteEvent: S.sawAbsolute,
+        eventRateHz: +hzRate().toFixed(1), gyroAvailable: S.gyroRate != null,
+        camera: S.camInfo, gps: S.pos, declinationMethod: DECL_METHOD
+      },
+      smoothing: { mode: $("smooth").value, alpha: parseFloat($("alpha").value) },
+      jitterTest: S.jitter && S.jitter.stats ? S.jitter.stats : "not run",
+      knownBearingChecks: S.checks,
+      notes_fill_in: { driftOver60sPass: null, cameraLatency: null, subjectiveTracking: null }
+    }, null, 2);
+  }
+  $("copyBtn").addEventListener("click", function () {
+    var t = sessionJSON();
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(
+      function () { toast("copied — paste into STAGE-0.md"); },
+      function () { window.prompt("copy manually:", t); });
+  });
+  $("dlBtn").addEventListener("click", function () {
+    var blob = new Blob([sessionJSON()], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "stage0-" + (/(iphone|ipad|android)/i.exec(navigator.userAgent) || ["device"])[0].toLowerCase() + "-" + Date.now() + ".json";
+    a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  });
+
+  /* ---------------- misc ---------------- */
+  $("alpha").addEventListener("input", function () { $("alphaV").textContent = (+this.value).toFixed(2); });
+  $("grab").addEventListener("click", function () { $("sheet").classList.toggle("min"); });
+  var toastT;
+  function toast(m) { var e = $("toast"); e.textContent = m; e.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(function () { e.classList.remove("show"); }, 1800); }
+})();
+</script>
+</body>
+</html>

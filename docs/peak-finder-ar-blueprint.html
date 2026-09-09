@@ -1,0 +1,1073 @@
+<title>Peak Finder AR Blueprint</title>
+<meta name="description" content="Development blueprint for TrekSense Peak Finder v2: a camera + compass + GPS augmented-reality peak identifier backed by an offline-first on-device store." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --ground: #efeee7;
+    --surface: #f8f7f2;
+    --surface-2: #e9e7dd;
+    --ink: #1a1d20;
+    --ink-soft: #3c4249;
+    --muted: #6a727c;
+    --line: #d5d3c8;
+    --line-soft: #e2e0d6;
+    --accent: #a85e14;          /* alpenglow — the reticle colour */
+    --accent-bg: #f4e6d3;
+    --summit: #2f6b4e;          /* structural: done / online / links */
+    --summit-bg: #dfeae2;
+    --alert: #b23c24;
+    --alert-bg: #f1ddd6;
+
+    --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --measure: 66ch;
+    --rail-w: 250px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #10141a;
+      --surface: #161b22;
+      --surface-2: #1e242c;
+      --ink: #e7e8e3;
+      --ink-soft: #c2c6c3;
+      --muted: #8b949f;
+      --line: #2a323c;
+      --line-soft: #232a33;
+      --accent: #e0913f;
+      --accent-bg: #33261a;
+      --summit: #63ac85;
+      --summit-bg: #1b2b23;
+      --alert: #e0715a;
+      --alert-bg: #33211c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #10141a;
+    --surface: #161b22;
+    --surface-2: #1e242c;
+    --ink: #e7e8e3;
+    --ink-soft: #c2c6c3;
+    --muted: #8b949f;
+    --line: #2a323c;
+    --line-soft: #232a33;
+    --accent: #e0913f;
+    --accent-bg: #33261a;
+    --summit: #63ac85;
+    --summit-bg: #1b2b23;
+    --alert: #e0715a;
+    --alert-bg: #33211c;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-body);
+    font-size: 18px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .doc { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding: 68px 0 34px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 20px;
+  }
+  .masthead h1 {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: clamp(2.1rem, 5.4vw, 3.5rem);
+    line-height: 1.04;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  .lede {
+    max-width: var(--measure);
+    font-size: 1.14rem;
+    color: var(--ink-soft);
+    margin: 0 0 30px;
+  }
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    max-width: 760px;
+  }
+  .meta div { background: var(--ground); padding: 12px 14px; }
+  .meta dt {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 3px;
+  }
+  .meta dd { margin: 0; font-family: var(--f-mono); font-size: 13px; font-weight: 500; }
+  .meta dd.live { color: var(--accent); }
+
+  /* ---------- layout ---------- */
+  .layout { display: block; }
+  @media (min-width: 1040px) {
+    .layout {
+      display: grid;
+      grid-template-columns: var(--rail-w) 1fr;
+      gap: 56px;
+      align-items: start;
+    }
+  }
+
+  .rail { display: none; }
+  @media (min-width: 1040px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 0;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 40px 0;
+      font-family: var(--f-mono);
+    }
+  }
+  .rail h2 {
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .progress-overall {
+    display: flex; align-items: baseline; gap: 8px;
+    font-size: 12px; color: var(--muted); margin-bottom: 6px;
+  }
+  .progress-overall b { font-size: 22px; color: var(--ink); font-weight: 600; }
+  .bar { height: 5px; background: var(--surface-2); border: 1px solid var(--line); margin-bottom: 24px; }
+  .bar > i { display: block; height: 100%; background: var(--summit); width: 0; transition: width 0.4s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { margin: 0 0 3px; }
+  .rail a {
+    display: flex; gap: 9px; align-items: baseline;
+    padding: 7px 8px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 12.5px;
+    border-left: 2px solid transparent;
+  }
+  .rail a:hover { background: var(--surface); color: var(--ink); }
+  .rail a.current { border-left-color: var(--accent); color: var(--ink); background: var(--surface); }
+  .rail a .n { color: var(--muted); flex: none; width: 1.4em; }
+  .rail a .frac { margin-left: auto; color: var(--summit); flex: none; font-size: 11px; }
+  .rail a .frac.none { color: var(--muted); }
+  .rail .divider { height: 1px; background: var(--line); margin: 16px 8px; }
+
+  /* ---------- main flow ---------- */
+  main { min-width: 0; padding: 24px 0 120px; }
+  section { padding: 44px 0; border-bottom: 1px solid var(--line-soft); scroll-margin-top: 20px; }
+  section:last-child { border-bottom: 0; }
+
+  .kicker {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h2.title {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(1.5rem, 3.4vw, 2.05rem);
+    line-height: 1.12;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  h3 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: 1.16rem;
+    letter-spacing: -0.01em;
+    margin: 34px 0 10px;
+  }
+  p { max-width: var(--measure); margin: 0 0 16px; }
+  p.wide { max-width: none; }
+  strong { font-weight: 600; }
+  a.link { color: var(--summit); text-underline-offset: 2px; }
+
+  code, .m {
+    font-family: var(--f-mono);
+    font-size: 0.86em;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    padding: 0.08em 0.36em;
+  }
+
+  ul.plain { max-width: var(--measure); margin: 0 0 18px; padding-left: 1.1em; }
+  ul.plain li { margin: 0 0 7px; }
+
+  /* ---------- stage blocks ---------- */
+  .stage { padding: 40px 0; border-bottom: 1px solid var(--line-soft); scroll-margin-top: 20px; }
+  .stage-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+  .stage-num {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 2.4rem;
+    line-height: 1;
+    color: var(--accent);
+    letter-spacing: -0.03em;
+  }
+  .stage-dur {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    padding: 4px 8px;
+  }
+  .stage h3.stage-title { font-size: 1.34rem; margin: 8px 0 14px; }
+
+  .build {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 4px 20px;
+    margin: 18px 0;
+    max-width: var(--measure);
+  }
+  .build > .lbl, .dod > .lbl {
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin: 14px 0 4px;
+  }
+  .build ul { list-style: none; margin: 8px 0 16px; padding: 0; }
+  .build li { display: flex; gap: 11px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--line-soft); }
+  .build li:first-child { border-top: 0; }
+  .build input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    flex: none; width: 17px; height: 17px; margin-top: 4px;
+    border: 1.5px solid var(--muted); border-radius: 3px;
+    background: var(--ground); cursor: pointer; position: relative;
+  }
+  .build input[type="checkbox"]:checked { background: var(--summit); border-color: var(--summit); }
+  .build input[type="checkbox"]:checked::after {
+    content: ""; position: absolute; left: 4.5px; top: 1px;
+    width: 4px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(42deg);
+  }
+  .build input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .build li span { font-size: 15.5px; line-height: 1.5; }
+  .build li input:checked + span { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+
+  .dod {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    padding: 14px 18px;
+    margin: 18px 0 4px;
+    max-width: var(--measure);
+  }
+  .dod p { margin: 4px 0 0; font-size: 15.5px; }
+
+  /* ---------- callout ---------- */
+  .note {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--summit);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 20px 0;
+    max-width: var(--measure);
+    font-size: 15.5px;
+  }
+  .note.warn { border-left-color: var(--alert); }
+  .note .lbl {
+    font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px;
+  }
+
+  /* ---------- tables ---------- */
+  .tw { overflow-x: auto; margin: 22px 0; border: 1px solid var(--line); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: var(--f-mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+    background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td .m, td code { font-size: 12px; white-space: nowrap; }
+  td b { font-family: var(--f-mono); font-size: 12.5px; font-weight: 600; }
+  .tag {
+    font-family: var(--f-mono); font-size: 10.5px; font-weight: 500;
+    padding: 2px 7px; border-radius: 2px; white-space: nowrap;
+    background: var(--surface-2); color: var(--ink-soft);
+  }
+  .tag.on { background: var(--summit-bg); color: var(--summit); }
+  .tag.off { background: var(--alert-bg); color: var(--alert); }
+  .tag.mid { background: var(--accent-bg); color: var(--accent); }
+
+  /* ---------- figures ---------- */
+  figure { margin: 26px 0; }
+  figure svg { display: block; width: 100%; height: auto; color: var(--ink); background: var(--surface); border: 1px solid var(--line); }
+  .geo .hot { stroke: var(--accent); }
+  .geo text.hot { stroke: none; fill: var(--accent); }
+  .geo text { fill: var(--ink); font-family: "IBM Plex Mono", monospace; }
+  .geo .dim { stroke: var(--muted); }
+  .geo text.dim { stroke: none; fill: var(--muted); }
+  .geo .fill-s { fill: var(--surface-2); }
+  .arch text { fill: var(--ink); font-family: "IBM Plex Mono", monospace; }
+  .arch text.dim { fill: var(--muted); }
+  .arch .box { fill: var(--ground); stroke: var(--ink); }
+  .arch .box-a { fill: var(--accent-bg); stroke: var(--accent); }
+  .arch .box-s { fill: var(--summit-bg); stroke: var(--summit); }
+  .arch .flow { stroke: var(--ink); }
+  .arch .flow-dim { stroke: var(--muted); stroke-dasharray: 4 3; }
+  figcaption {
+    font-family: var(--f-mono); font-size: 12px; color: var(--muted);
+    margin-top: 10px; max-width: var(--measure); line-height: 1.5;
+  }
+  figcaption b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- formula block ---------- */
+  .formula {
+    font-family: var(--f-mono); font-size: 13.5px;
+    background: var(--surface); border: 1px solid var(--line);
+    padding: 14px 16px; margin: 16px 0; max-width: var(--measure);
+    overflow-x: auto; line-height: 1.75;
+    white-space: pre;
+  }
+  .formula .c { color: var(--muted); }
+
+  .foot {
+    margin-top: 40px; padding-top: 22px; border-top: 2px solid var(--ink);
+    font-family: var(--f-mono); font-size: 12px; color: var(--muted);
+    max-width: var(--measure);
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>
+
+<div class="doc">
+  <header class="masthead">
+    <p class="eyebrow">TrekSense · Feature Blueprint</p>
+    <h1>Peak Finder — camera, compass, offline</h1>
+    <p class="lede">
+      Raise the phone at a skyline and read the mountains back: each summit labelled
+      with its name, elevation and distance, pinned to the real ridge by GPS,
+      compass and tilt. Every peak comes from an on-device store that filled itself
+      the last time there was signal — and keeps re-centring on you, roughly 100&nbsp;km
+      in every direction, as you travel. No city to type, no connection required in the field.
+    </p>
+    <dl class="meta">
+      <div><dt>Version</dt><dd>2.0 · draft</dd></div>
+      <div><dt>Date</dt><dd>2026-09-08</dd></div>
+      <div><dt>Status</dt><dd class="live">For review</dd></div>
+      <div><dt>Supersedes</dt><dd>v1 city lookup</dd></div>
+      <div><dt>Reference</dt><dd>Peak Finder v3</dd></div>
+      <div><dt>Est. effort</dt><dd>≈ 7 weeks solo</dd></div>
+    </dl>
+  </header>
+
+  <div class="layout">
+    <aside class="rail" aria-label="Blueprint contents">
+      <h2>Progress</h2>
+      <div class="progress-overall"><b id="pct">0%</b><span id="pcount">0 / 0 tasks</span></div>
+      <div class="bar"><i id="barfill"></i></div>
+
+      <h2>Sections</h2>
+      <ol id="railnav">
+        <li><a href="#concept"><span class="n">—</span><span>The redesign</span></a></li>
+        <li><a href="#how-it-works"><span class="n">—</span><span>How a reading is made</span></a></li>
+        <li><a href="#architecture"><span class="n">—</span><span>System shape</span></a></li>
+        <li><a href="#data-model"><span class="n">—</span><span>Data model</span></a></li>
+        <li class="divider" aria-hidden="true"></li>
+        <li><a href="#stage-0"><span class="n">0</span><span>Foundations &amp; spike</span><span class="frac none" data-frac="0">·</span></a></li>
+        <li><a href="#stage-1"><span class="n">1</span><span>Backend + data</span><span class="frac none" data-frac="1">·</span></a></li>
+        <li><a href="#stage-2"><span class="n">2</span><span>On-device store</span><span class="frac none" data-frac="2">·</span></a></li>
+        <li><a href="#stage-3"><span class="n">3</span><span>AR projection engine</span><span class="frac none" data-frac="3">·</span></a></li>
+        <li><a href="#stage-4"><span class="n">4</span><span>Rolling window</span><span class="frac none" data-frac="4">·</span></a></li>
+        <li><a href="#stage-5"><span class="n">5</span><span>Fallbacks &amp; a11y</span><span class="frac none" data-frac="5">·</span></a></li>
+        <li><a href="#stage-6"><span class="n">6</span><span>Field test &amp; launch</span><span class="frac none" data-frac="6">·</span></a></li>
+        <li class="divider" aria-hidden="true"></li>
+        <li><a href="#accuracy"><span class="n">—</span><span>Accuracy budget</span></a></li>
+        <li><a href="#risks"><span class="n">—</span><span>Risks &amp; open questions</span></a></li>
+        <li><a href="#done"><span class="n">—</span><span>Definition of done</span></a></li>
+      </ol>
+    </aside>
+
+    <main>
+      <!-- ============ CONCEPT ============ -->
+      <section id="concept">
+        <p class="kicker">The redesign</p>
+        <h2 class="title">From "type a city" to "point the phone"</h2>
+        <p>
+          v1 was a lookup: choose a start point, call the server, read a list. Useful, but it
+          needs a keyboard, a decision, and a live connection — none of which you have on a
+          ridge at dawn. v2 inverts every one of those.
+        </p>
+
+        <div class="tw">
+          <table>
+            <thead>
+              <tr><th>Dimension</th><th>v1 — city lookup</th><th>v2 — AR peak finder</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><b>Input</b></td><td>User types / picks a place</td><td>GPS fixes position automatically</td></tr>
+              <tr><td><b>Orientation</b></td><td>None — a flat list</td><td>Compass + tilt place each label on the real peak</td></tr>
+              <tr><td><b>Output</b></td><td>Sorted list + mini map</td><td>Labels over the live camera feed; list is the fallback</td></tr>
+              <tr><td><b>Connectivity</b></td><td>Request per search</td><td>Zero in the field — served from the on-device store</td></tr>
+              <tr><td><b>Data prep</b></td><td>On demand, per query</td><td>Automatic, in the background, whenever there is signal</td></tr>
+              <tr><td><b>Coverage</b></td><td>Wherever the user names</td><td>A ~100&nbsp;km disc that follows the user</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>The field story</h3>
+        <p class="wide" style="max-width:var(--measure)">
+          You installed TrekSense at home and opened Peak Finder once — it cached the app and
+          prepared the area around you. On the drive to the trailhead, with patchy 4G, it
+          quietly re-centred the store on each town you passed. At camp, offline, you open
+          Peak Finder: the camera comes up, you pan across the skyline, and
+          <em>Swargarohini I — 6,252&nbsp;m — 11&nbsp;km NW</em> tracks the summit as you move
+          the phone. Tap it for the detail card. Nothing loaded from the network.
+        </p>
+
+        <div class="note">
+          <span class="lbl">Scope decisions locked for this draft</span>
+          Full projected-AR overlay · no terrain occlusion for MVP (labels are placed
+          geometrically; nearer ridges may hide a peak) · on-device store holds
+          <em>peak metadata only</em> · flow is automatic first, with a hidden manual-location
+          fallback for denied GPS and bench testing.
+        </div>
+      </section>
+
+      <!-- ============ HOW IT WORKS ============ -->
+      <section id="how-it-works">
+        <p class="kicker">How a reading is made</p>
+        <h2 class="title">Turning a summit's coordinates into a label on glass</h2>
+        <p>
+          For every peak within range, the projection engine needs two screen coordinates:
+          where it sits left-to-right (from bearing) and up-from-the-horizon (from elevation
+          angle). Both are pure geometry once the sensors give position, heading and pitch.
+        </p>
+
+        <figure class="geo">
+          <svg viewBox="0 0 860 400" role="img" aria-label="Two panels. Left, a plan view from above: the observer at centre with a north arrow, a camera field-of-view wedge along the heading direction, and a peak off to one side; the angle from heading to the peak is the relative bearing that maps to screen x. Right, a side elevation: the observer's eye on the left, the peak on the right, separated by ground distance d, with the earth curving away between them; the angle between the horizontal and the line of sight to the summit is the elevation angle that maps to screen y.">
+            <!-- ================= PLAN VIEW ================= -->
+            <text x="24" y="30" font-size="12" letter-spacing="2">PLAN VIEW — screen x</text>
+            <!-- observer -->
+            <circle cx="150" cy="230" r="5" fill="currentColor"/>
+            <text x="150" y="256" font-size="11" text-anchor="middle" class="dim">observer</text>
+            <!-- north -->
+            <line x1="150" y1="230" x2="150" y2="70" class="dim" stroke-width="1"/>
+            <polygon points="150,60 146,72 154,72" class="dim" fill="currentColor" style="fill:var(--muted)"/>
+            <text x="150" y="52" font-size="11" text-anchor="middle" class="dim">N (true)</text>
+            <!-- heading ray -->
+            <line x1="150" y1="230" x2="150" y2="230" />
+            <line x1="150" y1="230" x2="262" y2="126" stroke="currentColor" stroke-width="1.5"/>
+            <text x="238" y="118" font-size="11" class="dim">heading</text>
+            <!-- FOV wedge -->
+            <path d="M150 230 L214 108 A130 130 0 0 0 300 150 Z" class="fill-s" opacity="0.6"/>
+            <line x1="150" y1="230" x2="214" y2="108" class="dim" stroke-width="1" stroke-dasharray="3 3"/>
+            <line x1="150" y1="230" x2="300" y2="150" class="dim" stroke-width="1" stroke-dasharray="3 3"/>
+            <text x="250" y="196" font-size="10.5" class="dim">hFOV</text>
+            <!-- peak -->
+            <polygon points="330,96 316,120 344,120" fill="currentColor" class="hot" style="fill:var(--accent);stroke:none"/>
+            <text x="352" y="104" font-size="11" class="hot">peak</text>
+            <!-- bearing arc to peak -->
+            <line x1="150" y1="230" x2="336" y2="108" class="hot" stroke-width="1.5"/>
+            <path d="M150 150 A80 80 0 0 1 196 168" fill="none" class="hot" stroke-width="1.2"/>
+            <text x="176" y="140" font-size="11" class="hot">&#952;&#8202;=&#8202;bearing(O,P)</text>
+            <!-- relative bearing bracket -->
+            <path d="M198 165 A55 55 0 0 1 205 150" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="214" y="164" font-size="11">&#946; = &#952; &#8722; heading</text>
+            <text x="24" y="330" font-size="11" class="dim">x&#8202;/&#8202;width  =  0.5  +  &#946;&#8202;/&#8202;hFOV</text>
+            <text x="24" y="350" font-size="10.5" class="dim">cull when |&#946;| &gt; hFOV/2</text>
+
+            <!-- divider -->
+            <line x1="452" y1="24" x2="452" y2="376" class="dim" stroke-width="1"/>
+
+            <!-- ================= SIDE VIEW ================= -->
+            <text x="486" y="30" font-size="12" letter-spacing="2">SIDE VIEW — screen y</text>
+            <!-- eye -->
+            <circle cx="512" cy="150" r="4" fill="currentColor"/>
+            <text x="512" y="140" font-size="11" text-anchor="middle" class="dim">eye · h&#7764;</text>
+            <!-- horizontal reference -->
+            <line x1="512" y1="150" x2="812" y2="150" class="dim" stroke-width="1" stroke-dasharray="4 3"/>
+            <text x="700" y="144" font-size="10.5" class="dim">horizontal</text>
+            <!-- curved earth -->
+            <path d="M500 176 Q662 150 828 210" fill="none" class="dim" stroke-width="1.4"/>
+            <text x="560" y="200" font-size="10.5" class="dim">earth curves away · c = d&#178;/2R&#8339;&#8323;&#8323;</text>
+            <!-- peak -->
+            <polygon points="792,96 772,150 812,150" class="hot" style="fill:var(--accent);stroke:none"/>
+            <text x="792" y="88" font-size="11" text-anchor="middle" class="hot">peak · h&#8346;</text>
+            <!-- line of sight -->
+            <line x1="512" y1="150" x2="788" y2="100" class="hot" stroke-width="1.5"/>
+            <!-- elevation angle arc -->
+            <path d="M572 150 A60 60 0 0 0 566 139" fill="none" class="hot" stroke-width="1.2"/>
+            <text x="580" y="140" font-size="11" class="hot">&#945;</text>
+            <!-- distance -->
+            <line x1="512" y1="326" x2="792" y2="326" class="dim" stroke-width="1"/>
+            <line x1="512" y1="320" x2="512" y2="332" class="dim" stroke-width="1"/>
+            <line x1="792" y1="320" x2="792" y2="332" class="dim" stroke-width="1"/>
+            <text x="652" y="344" font-size="11" text-anchor="middle" class="dim">d = haversine(O, P)</text>
+            <text x="486" y="372" font-size="11" class="dim">y&#8202;/&#8202;height = 0.5 &#8722; (&#945; &#8722; pitch)&#8202;/&#8202;vFOV</text>
+          </svg>
+          <figcaption>
+            <b>The projection.</b> Left: heading and the peak's true bearing give a relative
+            bearing <span class="m">&#946;</span>; dividing by the camera's horizontal field of
+            view places the label's x. Right: the peak's height, the ground distance and the
+            earth's curvature give the elevation angle <span class="m">&#945;</span>; subtract
+            the phone's pitch and divide by vertical FOV for y. Recomputed every frame from
+            smoothed sensor input.
+          </figcaption>
+        </figure>
+
+        <h3>The pipeline, step by step</h3>
+        <div class="formula">
+<span class="c">// per candidate peak P, observer O, each animation frame</span>
+1  d     = haversine(O, P)                         <span class="c">// km; filter d &le; radius</span>
+2  &#952;_true = initialBearing(O, P)                    <span class="c">// great-circle, 0&#8230;360&deg; from true N</span>
+3  head  = compassHeading + declination(O.lat, O.lon)  <span class="c">// magnetic &rarr; true</span>
+4  &#946;     = normalize180(&#952;_true &minus; head)
+5  x     = (0.5 + &#946; / hFOV) &times; viewport.w          <span class="c">// cull if |&#946;| &gt; hFOV/2 + margin</span>
+6  &#916;h    = P.elevation &minus; O.elevation
+7  &#945;     = atan2(&#916;h &minus; d&#178;&#8202;/&#8202;(2&#183;R_eff),  d&#183;1000)   <span class="c">// R_eff = 7/6&#183;R &rarr; curvature + refraction</span>
+8  vFOV  = hFOV &times; viewport.h / viewport.w
+9  y     = (0.5 &minus; (&#945; &minus; pitch) / vFOV) &times; viewport.h
+10 stack labels whose x overlaps; nearest peak on top; draw leader lines
+        </div>
+        <p>
+          Steps 1–2 and 6–7 are the same haversine and bearing maths v1 already ships, kept
+          local so sorting and panning never touch the network. Steps 3–5 and 8–9 are new and
+          sensor-bound — they are where accuracy is won or lost (see the
+          <a class="link" href="#accuracy">accuracy budget</a>).
+        </p>
+
+        <div class="note warn">
+          <span class="lbl">The compass is the weak link</span>
+          Raw phone magnetometers drift ±5–15°. At 40&nbsp;km that is a 3–10&nbsp;km sideways
+          error — a label on the wrong summit. Mitigations, all in Stage&nbsp;3: a
+          figure-eight calibration prompt, a complementary filter to fuse magnetometer with
+          gyroscope, and a one-drag "align this label to that peak" correction the user can
+          apply in the field.
+        </div>
+      </section>
+
+      <!-- ============ ARCHITECTURE ============ -->
+      <section id="architecture">
+        <p class="kicker">System shape</p>
+        <h2 class="title">Two paths to the same overlay</h2>
+        <p>
+          Online, the app prepares; offline, it draws. The projection engine and the overlay
+          renderer never know which mode they are in — they only ever read from the on-device
+          store, which the rolling-window preparer keeps stocked.
+        </p>
+
+        <figure class="arch">
+          <svg viewBox="0 0 900 470" role="img" aria-label="Data flow diagram. Top lane, online: the Overpass peak provider feeds a Vercel serverless proxy at slash api slash peaks, which returns normalized bounding-box tiles through the service worker to the on-device IndexedDB store; a GPS drift signal triggers the preparer to diff and fetch missing tiles. Bottom lane, offline and always: device sensors — GPS, compass, tilt, camera — feed the projection engine, which reads covering tiles from the same IndexedDB store and passes screen coordinates to the overlay renderer on top of the camera feed.">
+            <!-- lane labels -->
+            <text x="20" y="34" font-size="11" letter-spacing="2" class="dim">ONLINE · BACKGROUND PREPARATION</text>
+            <line x1="20" y1="44" x2="880" y2="44" class="flow-dim"/>
+
+            <!-- online row -->
+            <rect class="box" x="20" y="70" width="150" height="52"/>
+            <text x="95" y="92" font-size="12" text-anchor="middle">OpenStreetMap</text>
+            <text x="95" y="108" font-size="11" text-anchor="middle" class="dim">Overpass · natural=peak</text>
+
+            <rect class="box-a" x="250" y="70" width="170" height="52"/>
+            <text x="335" y="92" font-size="12" text-anchor="middle">/api/peaks?bbox=</text>
+            <text x="335" y="108" font-size="11" text-anchor="middle" class="dim">Vercel · normalize · cache</text>
+
+            <rect class="box" x="500" y="70" width="150" height="52"/>
+            <text x="575" y="92" font-size="12" text-anchor="middle">Service Worker</text>
+            <text x="575" y="108" font-size="11" text-anchor="middle" class="dim">shell + API cache</text>
+
+            <rect class="box-s" x="712" y="70" width="168" height="52"/>
+            <text x="796" y="88" font-size="12" text-anchor="middle">IndexedDB store</text>
+            <text x="796" y="104" font-size="11" text-anchor="middle" class="dim">peaks · tiles · prep</text>
+
+            <!-- online arrows -->
+            <line x1="170" y1="96" x2="244" y2="96" class="flow" marker-end="url(#ah)"/>
+            <text x="207" y="88" font-size="10" text-anchor="middle" class="dim">bbox query</text>
+            <line x1="420" y1="96" x2="494" y2="96" class="flow" marker-end="url(#ah)"/>
+            <text x="457" y="88" font-size="10" text-anchor="middle" class="dim">tiles JSON</text>
+            <line x1="650" y1="96" x2="706" y2="96" class="flow" marker-end="url(#ah)"/>
+            <text x="678" y="88" font-size="10" text-anchor="middle" class="dim">upsert</text>
+
+            <!-- preparer -->
+            <rect class="box" x="250" y="168" width="170" height="46"/>
+            <text x="335" y="188" font-size="12" text-anchor="middle">Rolling-window</text>
+            <text x="335" y="203" font-size="11" text-anchor="middle" class="dim">preparer</text>
+            <path d="M796 122 L796 150 L335 150 L335 164" fill="none" class="flow-dim"/>
+            <text x="540" y="144" font-size="10" text-anchor="middle" class="dim">reads tile status</text>
+            <path d="M335 214 L335 240 L250 240" fill="none" class="flow" marker-end="url(#ah)"/>
+            <text x="300" y="256" font-size="10" text-anchor="middle" class="dim">fetch missing / stale</text>
+            <path d="M250 240 L150 240 L150 122" fill="none" class="flow" marker-end="url(#ah)"/>
+
+            <!-- lane 2 -->
+            <text x="20" y="304" font-size="11" letter-spacing="2" class="dim">OFFLINE-CAPABLE · EVERY SESSION</text>
+            <line x1="20" y1="314" x2="880" y2="314" class="flow-dim"/>
+
+            <rect class="box" x="20" y="340" width="150" height="66"/>
+            <text x="95" y="362" font-size="12" text-anchor="middle">Sensors</text>
+            <text x="95" y="378" font-size="10.5" text-anchor="middle" class="dim">GPS · compass</text>
+            <text x="95" y="392" font-size="10.5" text-anchor="middle" class="dim">tilt · camera</text>
+
+            <rect class="box-a" x="270" y="340" width="180" height="66"/>
+            <text x="360" y="362" font-size="12" text-anchor="middle">Projection engine</text>
+            <text x="360" y="378" font-size="10.5" text-anchor="middle" class="dim">bearing &rarr; x</text>
+            <text x="360" y="392" font-size="10.5" text-anchor="middle" class="dim">elev. angle &rarr; y</text>
+
+            <rect class="box" x="560" y="340" width="180" height="66"/>
+            <text x="650" y="362" font-size="12" text-anchor="middle">Overlay renderer</text>
+            <text x="650" y="378" font-size="10.5" text-anchor="middle" class="dim">labels · leader lines</text>
+            <text x="650" y="392" font-size="10.5" text-anchor="middle" class="dim">over camera feed</text>
+
+            <line x1="170" y1="373" x2="264" y2="373" class="flow" marker-end="url(#ah)"/>
+            <text x="217" y="365" font-size="10" text-anchor="middle" class="dim">pose</text>
+            <line x1="450" y1="373" x2="554" y2="373" class="flow" marker-end="url(#ah)"/>
+            <text x="502" y="365" font-size="10" text-anchor="middle" class="dim">x, y / frame</text>
+
+            <!-- store to projection -->
+            <path d="M796 122 L860 122 L860 300 L360 300 L360 334" fill="none" class="flow" marker-end="url(#ah)"/>
+            <text x="600" y="294" font-size="10" text-anchor="middle" class="dim">read peaks for covering tiles — no network</text>
+
+            <defs>
+              <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+              </marker>
+            </defs>
+          </svg>
+          <figcaption>
+            <b>Amber</b> = the two pieces new work concentrates in (<span class="m">/api/peaks</span>
+            gains a bbox/tile interface; the projection engine is built from scratch).
+            <b>Green</b> = the store everything else revolves around. The dashed line is a
+            status read; solid arrows move data.
+          </figcaption>
+        </figure>
+
+        <h3>The backend proxy</h3>
+        <p>
+          Unchanged in spirit from v1: a Vercel serverless function fronts the OpenStreetMap
+          <span class="m">Overpass</span> API (<span class="m">natural=peak</span>, no key),
+          normalises records, filters non-mountain noise, and edge-caches responses. One
+          change: it takes a <strong>bounding box, not a radius</strong>, so requests snap to a
+          fixed tile grid (0.5°&nbsp;×&nbsp;0.5° cells ≈ 55&nbsp;km) and neighbouring fetches
+          merge without overlap or gaps. The provider layer stays swappable — replace one
+          function, keep the response schema.
+        </p>
+
+        <h3>The on-device store</h3>
+        <p>
+          <span class="m">IndexedDB</span>, three object stores (see <a class="link" href="#data-model">Data model</a>).
+          Peaks are keyed by stable OSM id so refreshes merge rather than duplicate. Tiles
+          carry a <span class="m">status</span> and <span class="m">preparedAt</span> so the
+          preparer knows what to refetch. A <span class="m">prep</span> singleton records the
+          last prepared centre for the staleness badge. The
+          <span class="m">Cache&nbsp;Storage</span> API (via the service worker) holds the app
+          shell and the magnetic-declination asset.
+        </p>
+
+        <h3>The rolling window</h3>
+        <p>
+          <span class="m">navigator.geolocation.watchPosition</span> feeds a drift check: when
+          the user has moved more than ~15&nbsp;km from the last prepared centre (or the store
+          is empty) <em>and</em> a connection is available, the preparer computes the tiles
+          covering a 100&nbsp;km box around the new position, diffs them against the
+          <span class="m">tiles</span> store, fetches what is missing or older than 30 days,
+          upserts, and evicts tiles that have fallen outside a 250&nbsp;km keep-box along with
+          their orphaned peaks. Storage stays bounded; the user just sees a
+          <span class="m">prepared · 2&nbsp;h ago</span> chip.
+        </p>
+      </section>
+
+      <!-- ============ DATA MODEL ============ -->
+      <section id="data-model">
+        <p class="kicker">Data model</p>
+        <h2 class="title">What lives where</h2>
+
+        <h3><span class="m">peaks</span> — IndexedDB object store</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><b>id</b></td><td><span class="m">string</span></td><td>keyPath. <span class="m">osm:node/12345</span> — stable across refreshes</td></tr>
+            <tr><td><b>name</b></td><td><span class="m">string</span></td><td>from <span class="m">name</span> / <span class="m">name:en</span></td></tr>
+            <tr><td><b>lat, lon</b></td><td><span class="m">number</span></td><td>WGS-84, 5 dp</td></tr>
+            <tr><td><b>elevation</b></td><td><span class="m">number | null</span></td><td>metres; null when OSM lacks <span class="m">ele</span> — vertical placement degrades gracefully</td></tr>
+            <tr><td><b>prominence</b></td><td><span class="m">number | null</span></td><td>optional; used only for label priority when present</td></tr>
+            <tr><td><b>tileKey</b></td><td><span class="m">string</span></td><td>indexed — <span class="m">"30.5_79.0"</span>, the cell the peak falls in; drives range queries and eviction</td></tr>
+            <tr><td><b>source</b></td><td><span class="m">"osm" | "fallback"</span></td><td>provenance for the staleness UI</td></tr>
+            <tr><td><b>fetchedAt</b></td><td><span class="m">number</span></td><td>epoch ms</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span class="m">tiles</span> — IndexedDB object store</h3>
+        <div class="tw"><table>
+          <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><b>tileKey</b></td><td><span class="m">string</span></td><td>keyPath — quantised 0.5° cell</td></tr>
+            <tr><td><b>bbox</b></td><td><span class="m">[s,w,n,e]</span></td><td>the exact box queried</td></tr>
+            <tr><td><b>status</b></td><td><span class="m">enum</span></td><td><span class="tag on">prepared</span> <span class="tag mid">fetching</span> <span class="tag off">stale</span></td></tr>
+            <tr><td><b>preparedAt</b></td><td><span class="m">number</span></td><td>drives the 30-day refresh check</td></tr>
+            <tr><td><b>peakCount</b></td><td><span class="m">number</span></td><td>sanity / UI</td></tr>
+            <tr><td><b>datasetVersion</b></td><td><span class="m">string</span></td><td>bump to force a full re-prepare on schema change</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span class="m">prep</span> — singleton · <span class="m">GET /api/peaks</span> response</h3>
+        <div class="tw"><table>
+          <thead><tr><th>prep singleton</th><th></th><th>API response shape</th></tr></thead>
+          <tbody>
+            <tr><td><b>center</b></td><td><span class="m">{lat,lon}</span></td><td rowspan="5"><div class="formula" style="margin:0;border:0;background:transparent;padding:0">{
+&nbsp;&nbsp;bbox: [s,w,n,e],
+&nbsp;&nbsp;tileKey: "30.5_79.0",
+&nbsp;&nbsp;generatedAt: "2026-09-08T…Z",
+&nbsp;&nbsp;source: "osm" | "fallback",
+&nbsp;&nbsp;degraded?: true,
+&nbsp;&nbsp;count: 97,
+&nbsp;&nbsp;peaks: [ {id,name,lat,lon,elevation,prominence} … ]
+}</div></td></tr>
+            <tr><td><b>radiusKm</b></td><td><span class="m">100</span></td></tr>
+            <tr><td><b>preparedAt</b></td><td><span class="m">number</span></td></tr>
+            <tr><td><b>schemaVersion</b></td><td><span class="m">string</span></td></tr>
+            <tr><td><b>lastOnlineAt</b></td><td><span class="m">number</span></td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ STAGES ============ -->
+      <section id="stages" style="border-bottom:0;padding-bottom:0">
+        <p class="kicker">Build sequence</p>
+        <h2 class="title">Seven stages, front-loaded on risk</h2>
+        <p>
+          The order is deliberate: prove the sensor loop before building anything on top of it
+          (Stage&nbsp;0), get real data flowing early (Stages&nbsp;1–2), then spend the biggest
+          block on the projection engine (Stage&nbsp;3) where the product either works or
+          doesn't. Durations are for one developer; Stages&nbsp;1 and 3 can run in parallel
+          once the response schema is frozen.
+        </p>
+      </section>
+
+      <div class="stage" id="stage-0">
+        <div class="stage-head"><span class="stage-num">0</span><span class="stage-dur">≈ half a week</span></div>
+        <h3 class="stage-title">Foundations &amp; sensor spike</h3>
+        <p>
+          Before committing to the architecture, confirm the four sensor APIs behave on the
+          real target devices and build one throwaway screen that proves the core illusion:
+          a label that stays glued to a compass direction as you pan the phone.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="0">
+            <li><input type="checkbox" id="t0-1"><label for="t0-1"><span>Device/API audit: <span class="m">geolocation</span>, <span class="m">deviceorientationabsolute</span> vs iOS <span class="m">webkitCompassHeading</span>, <span class="m">getUserMedia({facingMode:'environment'})</span>, and the iOS user-gesture permission prompt for motion sensors</span></label></li>
+            <li><input type="checkbox" id="t0-2"><label for="t0-2"><span>Throwaway spike page: camera feed + one hard-coded label positioned by relative bearing only</span></label></li>
+            <li><input type="checkbox" id="t0-3"><label for="t0-3"><span>Measure raw heading noise (standstill jitter, °) and lag on 2–3 reference phones</span></label></li>
+            <li><input type="checkbox" id="t0-4"><label for="t0-4"><span>Decide the smoothing approach (low-pass vs complementary filter) from the measured noise</span></label></li>
+            <li><input type="checkbox" id="t0-5"><span>Pick the magnetic-declination source (World Magnetic Model coefficients, public domain) and confirm asset size &lt; 50&nbsp;KB</span></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>On a real phone outdoors, the spike's label sits on the correct compass direction within ±5° and does not visibly drift while the phone is held still.</p></div>
+      </div>
+
+      <div class="stage" id="stage-1">
+        <div class="stage-head"><span class="stage-num">1</span><span class="stage-dur">≈ 1 week</span></div>
+        <h3 class="stage-title">Backend + data layer</h3>
+        <p>
+          A Vercel serverless <span class="m">/api/peaks</span> that takes a bounding box,
+          queries Overpass, normalises, filters noise, edge-caches, and falls back to a bundled
+          dataset when the provider is down. Freeze the response schema here — Stage&nbsp;3
+          depends on it.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="1">
+            <li><input type="checkbox" id="t1-1"><label for="t1-1"><span><span class="m">GET /api/peaks?bbox=s,w,n,e</span> — Overpass QL query, 25&nbsp;s timeout, endpoint failover</span></label></li>
+            <li><input type="checkbox" id="t1-2"><label for="t1-2"><span>Normaliser → <span class="m">{id,name,lat,lon,elevation,prominence,source}</span>; parse messy <span class="m">ele</span> tags</span></label></li>
+            <li><input type="checkbox" id="t1-3"><label for="t1-3"><span>Non-mountain filter (drop novelty nodes: keep <span class="m">ele ≥ 1000&nbsp;m</span> or has <span class="m">wikidata/wikipedia</span>)</span></label></li>
+            <li><input type="checkbox" id="t1-4"><label for="t1-4"><span><span class="m">Cache-Control: s-maxage=86400</span> edge caching keyed on the snapped bbox</span></label></li>
+            <li><input type="checkbox" id="t1-5"><label for="t1-5"><span><span class="m">api/_fallback-peaks.json</span> — ~130 major Himalayan summits; served with <span class="m">degraded:true</span></span></label></li>
+            <li><input type="checkbox" id="t1-6"><label for="t1-6"><span>Tile helpers: <span class="m">bboxToTileKeys()</span>, <span class="m">tileKeyToBbox()</span>, 0.5° grid; frozen JSON schema doc</span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p><span class="m">curl</span> a Himalayan bbox returns clean normalised JSON in &lt;&nbsp;30&nbsp;s; a repeat call is edge-cached; killing the provider returns the fallback set with <span class="m">degraded:true</span> and HTTP&nbsp;200.</p></div>
+      </div>
+
+      <div class="stage" id="stage-2">
+        <div class="stage-head"><span class="stage-num">2</span><span class="stage-dur">≈ 1 week</span></div>
+        <h3 class="stage-title">On-device store + manual preparation</h3>
+        <p>
+          Stand up IndexedDB and the service worker. Preparation is still a manual button at
+          this stage ("Prepare this area") — automation comes in Stage&nbsp;4. The goal is a
+          hard offline guarantee.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="2">
+            <li><input type="checkbox" id="t2-1"><label for="t2-1"><span>Thin IndexedDB wrapper; <span class="m">peaks</span>, <span class="m">tiles</span>, <span class="m">prep</span> stores with the <span class="m">tileKey</span> index</span></label></li>
+            <li><input type="checkbox" id="t2-2"><label for="t2-2"><span><span class="m">prepareArea(center)</span>: resolve covering tiles → fetch → upsert peaks by id → mark tiles <span class="m">prepared</span></span></label></li>
+            <li><input type="checkbox" id="t2-3"><label for="t2-3"><span>Service worker: precache app shell + declination asset; network-first for <span class="m">/api/peaks</span>, cache-first for shell</span></label></li>
+            <li><input type="checkbox" id="t2-4"><label for="t2-4"><span><span class="m">navigator.storage.persist()</span> request so the store survives storage pressure</span></label></li>
+            <li><input type="checkbox" id="t2-5"><label for="t2-5"><span>Status chip: <span class="m">preparing…</span> / <span class="m">prepared · &lt;age&gt;</span> / <span class="m">data centred &lt;n&gt; km away</span></span></label></li>
+            <li><input type="checkbox" id="t2-6"><label for="t2-6"><span>Query path: <span class="m">peaksForBox(center, radius)</span> reading covering tiles via <span class="m">IDBKeyRange</span></span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>Prepare an area while online, switch the device to airplane mode, hard-reload — the app opens from cache and <span class="m">peaksForBox()</span> returns the area's peaks with no network.</p></div>
+      </div>
+
+      <div class="stage" id="stage-3">
+        <div class="stage-head"><span class="stage-num">3</span><span class="stage-dur">≈ 1.5 weeks</span></div>
+        <h3 class="stage-title">AR projection engine</h3>
+        <p>
+          The core. A sensor manager that fuses heading, pitch and position into a stable
+          "pose"; a projector that turns each peak into screen coordinates; and an overlay
+          renderer that draws readable, non-overlapping labels over the camera feed.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="3">
+            <li><input type="checkbox" id="t3-1"><label for="t3-1"><span>Sensor manager: declination-corrected true heading, pitch from <span class="m">beta</span>, smoothing filter, a <span class="m">poseConfidence</span> readout</span></label></li>
+            <li><input type="checkbox" id="t3-2"><label for="t3-2"><span>Projector: bearing→x, elevation-angle→y with <span class="m">R_eff = 7/6·R</span> (curvature + refraction), frustum culling</span></label></li>
+            <li><input type="checkbox" id="t3-3"><label for="t3-3"><span>FOV calibration flow: user aligns the view to two known peaks once; store hFOV per device</span></label></li>
+            <li><input type="checkbox" id="t3-4"><label for="t3-4"><span>Overlay renderer: distance-scaled type, vertical collision stacking, leader lines, nearest-on-top</span></label></li>
+            <li><input type="checkbox" id="t3-5"><label for="t3-5"><span>Tap a label → peak detail sheet (name, elevation, distance, bearing, prominence)</span></label></li>
+            <li><input type="checkbox" id="t3-6"><label for="t3-6"><span>Field correction: drag a label onto its real summit → apply a heading offset to all labels</span></label></li>
+            <li><input type="checkbox" id="t3-7"><label for="t3-7"><span>Render loop throttled to ~20&nbsp;Hz; pauses when the phone is set down (low pitch variance)</span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>From a known viewpoint (e.g. above Sankri, facing the Swargarohini–Bandarpoonch wall) each label lands on the correct summit within its own width after calibration; panning is smooth; the drag-to-align correction visibly improves the fit.</p></div>
+      </div>
+
+      <div class="stage" id="stage-4">
+        <div class="stage-head"><span class="stage-num">4</span><span class="stage-dur">≈ 1 week</span></div>
+        <h3 class="stage-title">Automatic rolling window</h3>
+        <p>
+          Remove the manual "prepare" button. The store now follows the user: a background
+          watcher extends and re-centres the ~100&nbsp;km disc whenever the user has moved and
+          a connection is available, and trims what falls behind.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="4">
+            <li><input type="checkbox" id="t4-1"><label for="t4-1"><span><span class="m">watchPosition</span> → drift detector (moved &gt; 15&nbsp;km from prepared centre, or store empty)</span></label></li>
+            <li><input type="checkbox" id="t4-2"><label for="t4-2"><span>Online gate: only fetch on <span class="m">navigator.onLine</span> + a successful lightweight ping; back off on failure</span></label></li>
+            <li><input type="checkbox" id="t4-3"><label for="t4-3"><span>Tile diff → fetch missing / &gt;30-day-old tiles → merge by id (never wholesale replace)</span></label></li>
+            <li><input type="checkbox" id="t4-4"><label for="t4-4"><span>Eviction: drop tiles outside a 250&nbsp;km keep-box and their orphaned peaks</span></label></li>
+            <li><input type="checkbox" id="t4-5"><label for="t4-5"><span>Online/offline transition handling; staleness badge with age + prepared-centre distance</span></label></li>
+            <li><input type="checkbox" id="t4-6"><label for="t4-6"><span>Optional: <span class="m">Background Sync</span> to finish an interrupted prepare when signal returns</span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>Feeding a 300&nbsp;km mock travel track with intermittent connectivity, the store always covers ~100&nbsp;km around the mock position wherever a connection was available, and total storage stays bounded.</p></div>
+      </div>
+
+      <div class="stage" id="stage-5">
+        <div class="stage-head"><span class="stage-num">5</span><span class="stage-dur">≈ 1 week</span></div>
+        <h3 class="stage-title">Fallbacks, polish, accessibility</h3>
+        <p>
+          Every permission and sensor can be denied or absent. Each path must land somewhere
+          useful, and the feature must be operable without the camera and legible to a screen
+          reader.
+        </p>
+        <div class="build">
+          <span class="lbl">Build</span>
+          <ul data-stage="5">
+            <li><input type="checkbox" id="t5-1"><label for="t5-1"><span>Map mode (camera denied): radial compass plot of peaks around you, from the store, no basemap</span></label></li>
+            <li><input type="checkbox" id="t5-2"><label for="t5-2"><span>Compass calibration UX: figure-eight prompt, "low accuracy" banner, manual N-up in map mode</span></label></li>
+            <li><input type="checkbox" id="t5-3"><label for="t5-3"><span>GPS denied → hidden "No GPS?" link → manual location (search / drop pin) → same pipeline</span></label></li>
+            <li><input type="checkbox" id="t5-4"><label for="t5-4"><span>Permission priming screens explaining why camera / location / motion are needed, before the OS prompt</span></label></li>
+            <li><input type="checkbox" id="t5-5"><label for="t5-5"><span>Screen-reader summary list: "Nanda Devi, 7,816&nbsp;m, 42&nbsp;km, north-east" ordered by distance</span></label></li>
+            <li><input type="checkbox" id="t5-6"><label for="t5-6"><span><span class="m">prefers-reduced-motion</span>; release the camera on tab hide; throttle when static (battery)</span></label></li>
+            <li><input type="checkbox" id="t5-7"><label for="t5-7"><span>Missing-elevation peaks: place on the horizon line, mark the label, note reduced vertical accuracy</span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>Every denied-permission path reaches a usable screen; the feature works end-to-end in map mode with no camera; Lighthouse reports the PWA installable; axe reports no violations on the main flow.</p></div>
+      </div>
+
+      <div class="stage" id="stage-6">
+        <div class="stage-head"><span class="stage-num">6</span><span class="stage-dur">≈ 1 week</span></div>
+        <h3 class="stage-title">Field test → harden → launch</h3>
+        <p>
+          Adapted from the v3 reference test plan, weighted toward the two things that can
+          only be checked outdoors: bearing stability and multi-peak identification against a
+          known panorama.
+        </p>
+        <div class="build">
+          <span class="lbl">Build &amp; verify</span>
+          <ul data-stage="6">
+            <li><input type="checkbox" id="t6-1"><label for="t6-1"><span>Indoor smoke: permissions, camera, store read, projection loop runs</span></label></li>
+            <li><input type="checkbox" id="t6-2"><label for="t6-2"><span>Urban outdoor: heading stable against a known landmark bearing; no drift at standstill</span></label></li>
+            <li><input type="checkbox" id="t6-3"><label for="t6-3"><span>Open-area: identify ≥&nbsp;3 peaks correctly from a documented viewpoint; log labelled-vs-actual offset</span></label></li>
+            <li><input type="checkbox" id="t6-4"><label for="t6-4"><span>Offline: prepare online, airplane mode, reopen — full feature works</span></label></li>
+            <li><input type="checkbox" id="t6-5"><label for="t6-5"><span>Recovery: travel + reconnect + auto-refresh; confirm stale tiles replaced, storage trimmed</span></label></li>
+            <li><input type="checkbox" id="t6-6"><label for="t6-6"><span>Failure: provider timeout, empty bbox, denied location, denied camera, no compass</span></label></li>
+            <li><input type="checkbox" id="t6-7"><label for="t6-7"><span>Tune constants from the accuracy log: default hFOV, refraction <span class="m">k</span>, drift threshold</span></label></li>
+            <li><input type="checkbox" id="t6-8"><label for="t6-8"><span>Telemetry: error rate + Overpass call volume; quota alert before any paid tier</span></label></li>
+          </ul>
+        </div>
+        <div class="dod"><span class="lbl">Definition of done</span><p>A first-time user identifies ≥&nbsp;3 correct peaks from a real viewpoint with no instructions; the feature works offline after preparation; no provider secret ships in client code; error and usage telemetry is live.</p></div>
+      </div>
+
+      <!-- ============ ACCURACY ============ -->
+      <section id="accuracy">
+        <p class="kicker">Accuracy budget</p>
+        <h2 class="title">Where the label offset comes from</h2>
+        <p>
+          The label is only as right as the pose. Horizontal error (wrong summit
+          left-to-right) is dominated by the compass; vertical error (label too high or low)
+          by GPS altitude. Everything else is second-order.
+        </p>
+        <div class="tw"><table>
+          <thead><tr><th>Source</th><th>Typical magnitude</th><th>Effect</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td><b>Compass heading</b></td><td>±5–15° raw · ±2–3° tuned</td><td class="tag off">dominant — horizontal</td><td>Figure-8 calibration · gyro fusion · drag-to-align field correction</td></tr>
+            <tr><td><b>GPS altitude</b></td><td>±10–30&nbsp;m, often null</td><td class="tag off">dominant — vertical, near peaks</td><td>User height nudge · online SRTM point lookup · horizon-line fallback when null</td></tr>
+            <tr><td><b>Camera FOV assumption</b></td><td>±5–10° if uncalibrated</td><td class="tag mid">horizontal scale</td><td>One-time two-peak calibration, stored per device</td></tr>
+            <tr><td><b>Magnetic declination</b></td><td>≈ 0–2° across the Indian Himalaya</td><td class="tag mid">horizontal bias</td><td>World Magnetic Model correction, bundled offline</td></tr>
+            <tr><td><b>GPS position</b></td><td>±5–15&nbsp;m</td><td class="tag">negligible at &gt; 1&nbsp;km</td><td>None needed</td></tr>
+            <tr><td><b>Atmospheric refraction</b></td><td>variable</td><td class="tag">minor — vertical</td><td>Fixed coefficient <span class="m">k = 0.13</span></td></tr>
+            <tr><td><b>No terrain occlusion</b></td><td>—</td><td class="tag mid">shows hidden peaks</td><td>Label "line of sight not checked" · nearest peaks rank first (most likely visible)</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ RISKS ============ -->
+      <section id="risks">
+        <p class="kicker">Risks &amp; open questions</p>
+        <h2 class="title">Decide before Stage 3</h2>
+        <div class="tw"><table>
+          <thead><tr><th>Item</th><th>Concern</th><th>Current lean</th></tr></thead>
+          <tbody>
+            <tr><td><b>iOS compass indoors</b></td><td>Magnetometer unreliable near metal/vehicles; users will first open it in a car</td><td>Detect low accuracy, refuse AR mode until calibrated, offer map mode</td></tr>
+            <tr><td><b>Overpass coverage</b></td><td>Some real peaks unnamed or missing <span class="m">ele</span> in OSM; rate limits on heavy prep</td><td>Accept gaps for MVP; bundled fallback for the biggest summits; throttle prep</td></tr>
+            <tr><td><b>Browser storage eviction</b></td><td>OS can clear IndexedDB under pressure — silently breaks offline</td><td><span class="m">storage.persist()</span> + re-prepare on next online if store looks thin</td></tr>
+            <tr><td><b>Battery drain</b></td><td>Camera + GPS + motion sensors + 20&nbsp;Hz render is heavy</td><td>Throttle when static, release camera on hide, cap session with a gentle prompt</td></tr>
+            <tr><td><b>iOS PWA camera friction</b></td><td>Permission prompts and motion-permission gesture requirement hurt first-run</td><td>Priming screens; make map mode fully functional without camera</td></tr>
+            <tr><td><b>DEM later?</b></td><td>True line-of-sight needs elevation tiles — tens of MB per area</td><td>Explicit non-goal for MVP; revisit if "peak is actually hidden" complaints are common</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ============ DONE ============ -->
+      <section id="done" style="border-bottom:0">
+        <p class="kicker">Definition of done — the feature</p>
+        <h2 class="title">What "working" means</h2>
+        <ul class="plain">
+          <li>A new user opens Peak Finder, grants camera + location, and sees named peaks on the skyline with no further instruction.</li>
+          <li>Names and elevations track the real summits within a label's width from a calibrated viewpoint.</li>
+          <li>With the area prepared, the whole feature works with the network disabled.</li>
+          <li>The ~100&nbsp;km store re-centres itself as the user travels with signal; storage stays bounded.</li>
+          <li>Every denied permission or missing sensor lands on a usable screen (map mode, manual location, calibration).</li>
+          <li>No provider key or secret is present in client code; repeated views of a prepared area make no provider calls.</li>
+        </ul>
+
+        <h3>Non-goals for the MVP</h3>
+        <ul class="plain">
+          <li>Terrain occlusion / true horizon culling (needs a DEM).</li>
+          <li>Offline basemap or satellite tiles.</li>
+          <li>Peak photographs or 3D panorama rendering in the AR view.</li>
+          <li>Accounts, sharing, saved sightings.</li>
+          <li>Coverage outside the Himalaya (dataset and calibration are region-tuned).</li>
+        </ul>
+
+        <div class="foot">
+          TrekSense Peak Finder · Blueprint v2.0 draft · 2026-09-08 · supersedes the v1 city
+          lookup · builds on <em>TrekSense Peak Finder — Step-by-step product blueprint v3</em>.
+          Next: review, then Stage&nbsp;0.
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+    var KEY = "ts-pf-blueprint-v2";
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.build input[type="checkbox"]'));
+
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+
+    boxes.forEach(function (b) { if (saved[b.id]) b.checked = true; });
+
+    function persist() {
+      var out = {};
+      boxes.forEach(function (b) { if (b.checked) out[b.id] = 1; });
+      try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
+    }
+
+    function refresh() {
+      var done = boxes.filter(function (b) { return b.checked; }).length;
+      var total = boxes.length;
+      var pctEl = document.getElementById("pct");
+      var pcEl = document.getElementById("pcount");
+      var fill = document.getElementById("barfill");
+      if (pctEl) pctEl.textContent = (total ? Math.round((done / total) * 100) : 0) + "%";
+      if (pcEl) pcEl.textContent = done + " / " + total + " tasks";
+      if (fill) fill.style.width = (total ? (done / total) * 100 : 0) + "%";
+
+      document.querySelectorAll(".frac[data-frac]").forEach(function (el) {
+        var s = el.getAttribute("data-frac");
+        var list = document.querySelectorAll('.build ul[data-stage="' + s + '"] input[type="checkbox"]');
+        if (!list.length) return;
+        var d = 0;
+        list.forEach(function (b) { if (b.checked) d++; });
+        el.textContent = d + "/" + list.length;
+        el.classList.toggle("none", d === 0);
+      });
+    }
+
+    boxes.forEach(function (b) {
+      b.addEventListener("change", function () { persist(); refresh(); });
+    });
+    refresh();
+
+    // rail: highlight the section in view
+    var links = Array.prototype.slice.call(document.querySelectorAll("#railnav a"));
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var targets = Object.keys(byId).map(function (id) { return document.getElementById(id); }).filter(Boolean);
+
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            links.forEach(function (l) { l.classList.remove("current"); });
+            var a = byId[en.target.id];
+            if (a) a.classList.add("current");
+          }
+        });
+      }, { rootMargin: "-15% 0px -75% 0px" });
+      targets.forEach(function (t) { io.observe(t); });
+    }
+  })();
+</script>

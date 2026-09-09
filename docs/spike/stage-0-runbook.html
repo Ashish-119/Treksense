@@ -1,0 +1,513 @@
+<title>Stage 0 Field Runbook</title>
+<meta name="description" content="Step-by-step manual procedure for TrekSense Peak Finder Stage 0 — deploying the sensor spike and running the device audit, drift, jitter and bearing-accuracy checks." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --ground:#efeee7; --surface:#f8f7f2; --surface-2:#e9e7dd;
+    --ink:#1a1d20; --ink-soft:#3c4249; --muted:#6a727c;
+    --line:#d5d3c8; --line-soft:#e2e0d6;
+    --accent:#a85e14; --accent-bg:#f4e6d3;
+    --summit:#2f6b4e; --summit-bg:#dfeae2;
+    --alert:#b23c24; --alert-bg:#f1ddd6;
+    --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --f-body:"Source Serif 4",Georgia,serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    --measure:64ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#10141a; --surface:#161b22; --surface-2:#1e242c;
+      --ink:#e7e8e3; --ink-soft:#c2c6c3; --muted:#8b949f;
+      --line:#2a323c; --line-soft:#232a33;
+      --accent:#e0913f; --accent-bg:#33261a;
+      --summit:#63ac85; --summit-bg:#1b2b23;
+      --alert:#e0715a; --alert-bg:#33211c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#10141a; --surface:#161b22; --surface-2:#1e242c;
+    --ink:#e7e8e3; --ink-soft:#c2c6c3; --muted:#8b949f;
+    --line:#2a323c; --line-soft:#232a33;
+    --accent:#e0913f; --accent-bg:#33261a;
+    --summit:#63ac85; --summit-bg:#1b2b23;
+    --alert:#e0715a; --alert-bg:#33211c;
+  }
+
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:720px; margin:0 auto; padding:0 20px 120px; }
+
+  /* sticky progress */
+  .topbar {
+    position:sticky; top:0; z-index:10; background:var(--ground);
+    border-bottom:1px solid var(--line); margin:0 -20px 0; padding:10px 20px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .topbar .lbl { font-family:var(--f-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  .topbar .bar { flex:1; height:6px; background:var(--surface-2); border:1px solid var(--line); }
+  .topbar .bar > i { display:block; height:100%; background:var(--summit); width:0; transition:width .3s ease; }
+  @media (prefers-reduced-motion: reduce) { .topbar .bar > i { transition:none; } }
+  .topbar .pct { font-family:var(--f-mono); font-size:12px; font-weight:600; white-space:nowrap; }
+
+  /* masthead */
+  .mast { padding:40px 0 26px; border-bottom:2px solid var(--ink); }
+  .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:0.2em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+  }
+  h1 {
+    font-family:var(--f-display); font-weight:800; font-size:clamp(1.9rem,5vw,2.7rem);
+    line-height:1.06; letter-spacing:-0.02em; margin:0 0 14px; text-wrap:balance;
+  }
+  .mast p { max-width:var(--measure); color:var(--ink-soft); margin:0 0 8px; }
+  .mast .fine { font-family:var(--f-mono); font-size:12.5px; color:var(--muted); line-height:1.55; }
+
+  /* tasks */
+  .task { padding:34px 0; border-bottom:1px solid var(--line-soft); scroll-margin-top:64px; }
+  .task-head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  .task-num {
+    font-family:var(--f-display); font-weight:800; font-size:2.1rem; line-height:1;
+    color:var(--accent); letter-spacing:-0.03em;
+  }
+  .task-time {
+    font-family:var(--f-mono); font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--muted); border:1px solid var(--line); padding:3px 8px;
+  }
+  h2.task-title {
+    font-family:var(--f-display); font-weight:700; font-size:1.4rem; letter-spacing:-0.015em;
+    margin:8px 0 14px; text-wrap:balance;
+  }
+  h3 {
+    font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--muted); margin:22px 0 8px;
+  }
+  p { max-width:var(--measure); margin:0 0 14px; }
+  strong { font-weight:600; }
+  em { font-style:italic; }
+
+  code, .m {
+    font-family:var(--f-mono); font-size:0.84em;
+    background:var(--surface); border:1px solid var(--line-soft); border-radius:3px;
+    padding:0.08em 0.34em; word-break:break-word;
+  }
+  a.link { color:var(--summit); text-underline-offset:2px; }
+
+  ul.need { list-style:none; margin:0 0 6px; padding:0; max-width:var(--measure); }
+  ul.need li { padding:5px 0 5px 20px; position:relative; font-size:15.5px; }
+  ul.need li::before { content:"–"; position:absolute; left:2px; color:var(--muted); }
+
+  ol.steps { margin:0 0 8px; padding:0; counter-reset:s; list-style:none; max-width:var(--measure); }
+  ol.steps > li {
+    position:relative; padding:9px 0 9px 40px; border-top:1px solid var(--line-soft);
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  ol.steps > li:first-child { border-top:0; }
+  ol.steps > li::before {
+    counter-increment:s; content:counter(s);
+    position:absolute; left:0; top:9px; width:24px; height:24px;
+    font-family:var(--f-mono); font-size:12px; font-weight:600;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); border-radius:50%; color:var(--muted);
+  }
+  ol.steps input[type=checkbox] {
+    appearance:none; -webkit-appearance:none; flex:none; width:19px; height:19px; margin-top:2px;
+    border:1.5px solid var(--muted); border-radius:4px; background:var(--ground); cursor:pointer; position:relative;
+  }
+  ol.steps input[type=checkbox]:checked { background:var(--summit); border-color:var(--summit); }
+  ol.steps input[type=checkbox]:checked::after {
+    content:""; position:absolute; left:5px; top:1px; width:5px; height:10px;
+    border:solid #fff; border-width:0 2px 2px 0; transform:rotate(42deg);
+  }
+  ol.steps input[type=checkbox]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  ol.steps .txt { flex:1; font-size:15.5px; line-height:1.5; }
+  ol.steps input:checked + .txt { color:var(--muted); }
+
+  .box {
+    border:1px solid var(--line); border-left:3px solid var(--accent);
+    background:var(--accent-bg); padding:13px 16px; margin:16px 0; max-width:var(--measure);
+    font-size:15px;
+  }
+  .box.warn { border-left-color:var(--alert); background:var(--alert-bg); }
+  .box.ok { border-left-color:var(--summit); background:var(--summit-bg); }
+  .box .h {
+    font-family:var(--f-mono); font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--muted); display:block; margin-bottom:5px;
+  }
+
+  textarea.note {
+    width:100%; max-width:var(--measure); display:block; margin:8px 0 4px;
+    font-family:var(--f-mono); font-size:13px; line-height:1.5;
+    background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px;
+    padding:10px 12px; min-height:70px; resize:vertical;
+  }
+  textarea.note:focus, input.field:focus { outline:none; border-color:var(--accent); }
+  input.field {
+    font-family:var(--f-mono); font-size:13px; background:var(--surface); color:var(--ink);
+    border:1px solid var(--line); border-radius:5px; padding:7px 9px; width:100%; max-width:340px;
+  }
+
+  .tw { overflow-x:auto; margin:16px 0; border:1px solid var(--line); max-width:var(--measure); }
+  table { border-collapse:collapse; width:100%; font-size:13px; }
+  th,td { text-align:left; padding:8px 11px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  th {
+    font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--muted); background:var(--surface); border-bottom:1px solid var(--line);
+  }
+  tbody tr:last-child td { border-bottom:0; }
+  td b { font-family:var(--f-mono); font-size:12px; }
+  td .good { color:var(--summit); } td .bad { color:var(--alert); }
+
+  .decision {
+    border:1px solid var(--line); background:var(--surface); padding:14px 16px; margin:14px 0;
+    max-width:var(--measure);
+  }
+  .decision .id { font-family:var(--f-mono); font-size:11px; color:var(--accent); font-weight:600; }
+  .decision label { display:block; font-size:14px; margin:10px 0 4px; color:var(--ink-soft); }
+
+  .foot {
+    margin-top:36px; padding-top:20px; border-top:2px solid var(--ink);
+    font-family:var(--f-mono); font-size:12px; color:var(--muted); max-width:var(--measure);
+  }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+</style>
+
+<div class="page">
+  <div class="topbar">
+    <span class="lbl">Stage 0</span>
+    <span class="bar"><i id="fill"></i></span>
+    <span class="pct" id="pct">0%</span>
+  </div>
+
+  <header class="mast">
+    <p class="eyebrow">TrekSense · Peak Finder · Field runbook</p>
+    <h1>Stage 0, step by step</h1>
+    <p>Seven manual tasks. Work top to bottom — Task&nbsp;1 gets the spike online, Tasks&nbsp;4–6
+      are the measurements, Task&nbsp;7 closes the stage. Tick each step as you go; progress
+      saves in this browser.</p>
+    <p class="fine">Pair this with the spike page (<span class="m">docs/spike/sensor-spike.html</span>)
+      and record final numbers in <span class="m">docs/spike/STAGE-0.md</span> — that file is the
+      source of truth, this page is the checklist. Exit condition: the target label sits within
+      <strong>±5°</strong> of the correct compass direction and does not drift while the phone is still.</p>
+  </header>
+
+  <!-- ============ TASK 1 ============ -->
+  <section class="task" id="t1">
+    <div class="task-head"><span class="task-num">1</span><span class="task-time">≈ 15 min · once</span></div>
+    <h2 class="task-title">Put the spike on an HTTPS URL</h2>
+    <p>Camera and motion sensors are blocked unless the page is served over HTTPS from a real
+      origin. <span class="m">file://</span> and the artifact preview won't work. GitHub Pages
+      is the quickest route since the repo already lives there.</p>
+
+    <h3>You'll need</h3>
+    <ul class="need">
+      <li>Push access to <span class="m">github.com/Ashish-119/Treksense</span></li>
+      <li>The Stage 0 files committed and pushed (<span class="m">docs/spike/…</span>)</li>
+    </ul>
+
+    <h3>Steps</h3>
+    <ol class="steps" data-task="1">
+      <li><input type="checkbox"><span class="txt">Commit and push the <span class="m">docs/</span> folder to a branch on the remote (e.g. <span class="m">main</span> or <span class="m">feature/peak-finder</span>).</span></li>
+      <li><input type="checkbox"><span class="txt">On GitHub: repo → <strong>Settings</strong> → <strong>Pages</strong> (left sidebar).</span></li>
+      <li><input type="checkbox"><span class="txt">Under <strong>Build and deployment</strong> → <strong>Source</strong>, choose <strong>Deploy from a branch</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Set <strong>Branch</strong> to the one you pushed, <strong>folder</strong> to <span class="m">/ (root)</span>, click <strong>Save</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Wait ~1–2 min for the green "Your site is live" banner. The URL base is <span class="m">https://ashish-119.github.io/Treksense/</span>.</span></li>
+      <li><input type="checkbox"><span class="txt">Open <span class="m">https://ashish-119.github.io/Treksense/docs/spike/sensor-spike.html</span> in a desktop browser. You should see the gate screen with a preflight list.</span></li>
+      <li><input type="checkbox"><span class="txt">Confirm the preflight shows <strong>Secure context: yes</strong>. Send the link to your phones (message it to yourself / AirDrop).</span></li>
+    </ol>
+
+    <div class="box"><span class="h">Record</span>The live spike URL, so every device uses the same one.</div>
+    <textarea class="note" data-note="1" placeholder="Spike URL: …"></textarea>
+
+    <div class="box warn"><span class="h">If it goes wrong</span>
+      <strong>No Pages option / 404:</strong> the repo may be private on a free plan — make it public, or use Vercel instead (import the repo, then
+      <span class="m">https://&lt;project&gt;.vercel.app/docs/spike/sensor-spike.html</span>).
+      <strong>Preflight "Secure context: NO":</strong> you opened a <span class="m">file://</span> path or plain <span class="m">http</span> — use the <span class="m">https://</span> Pages URL.</div>
+  </section>
+
+  <!-- ============ TASK 2 ============ -->
+  <section class="task" id="t2">
+    <div class="task-head"><span class="task-num">2</span><span class="task-time">≈ 10 min</span></div>
+    <h2 class="task-title">Assemble the test devices</h2>
+    <p>The blueprint needs coverage of the two mobile engines that behave differently. Borrow
+      what you don't own.</p>
+
+    <div class="tw"><table>
+      <thead><tr><th>Priority</th><th>Device</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><b>must</b></td><td>iPhone, Safari, iOS 16+</td><td><span class="m">webkitCompassHeading</span>, the motion-permission gesture, Apple's "already true north" heading</td></tr>
+        <tr><td><b>must</b></td><td>Android, Chrome, recent flagship-ish</td><td><span class="m">deviceorientationabsolute</span>, magnetic-frame <span class="m">alpha</span>, typical magnetometer noise</td></tr>
+        <tr><td>nice</td><td>Older / budget Android</td><td>Worst-case jitter, low event rate, sometimes <em>no</em> absolute event at all</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Steps</h3>
+    <ol class="steps" data-task="2">
+      <li><input type="checkbox"><span class="txt">Line up at least the two "must" devices; fully charge them.</span></li>
+      <li><input type="checkbox"><span class="txt">For each, note the exact <strong>model name</strong> and <strong>OS version</strong> (Settings → About).</span></li>
+      <li><input type="checkbox"><span class="txt">Update the browser (App Store / Play Store) so you're testing current engines.</span></li>
+      <li><input type="checkbox"><span class="txt">Pick an outdoor spot for later tasks: open sky, <strong>away from cars, steel railings, reinforced concrete and speakers</strong> (all distort the magnetometer).</span></li>
+    </ol>
+    <textarea class="note" data-note="2" placeholder="Device 1: …&#10;Device 2: …&#10;Device 3: …&#10;Test location: …"></textarea>
+  </section>
+
+  <!-- ============ TASK 3 ============ -->
+  <section class="task" id="t3">
+    <div class="task-head"><span class="task-num">3</span><span class="task-time">≈ 5 min per device</span></div>
+    <h2 class="task-title">Open the spike and grant permissions</h2>
+    <p>Do this once per device. The order matters on iOS — the motion prompt only appears
+      because you tapped the button.</p>
+
+    <h3>Steps (repeat per device)</h3>
+    <ol class="steps" data-task="3">
+      <li><input type="checkbox"><span class="txt">Hold the phone in <strong>portrait</strong>. Open the spike URL in the default browser (Safari on iOS, Chrome on Android).</span></li>
+      <li><input type="checkbox"><span class="txt">Read the <strong>preflight list</strong>. Expected: all green except "iOS permission gesture" which is amber on iPhone, green (n/a) on Android.</span></li>
+      <li><input type="checkbox"><span class="txt">Tap <strong>"Start spike &amp; grant permissions"</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Grant, in order: <strong>Motion &amp; Orientation</strong> → <strong>Camera</strong> → <strong>Location</strong> (While Using).</span></li>
+      <li><input type="checkbox"><span class="txt">You should now see the live camera, a compass tick-strip near the top, and a large heading readout.</span></li>
+      <li><input type="checkbox"><span class="txt">Drag the bottom sheet handle up to reveal the readout panel and controls.</span></li>
+    </ol>
+
+    <div class="box warn"><span class="h">If it goes wrong</span>
+      <strong>iOS never asked for Motion:</strong> reload the page and tap the button again — iOS drops the prompt if anything else grabbed focus first. Still nothing? Settings → Safari → Motion &amp; Orientation Access must be ON.
+      <strong>Camera black:</strong> check the site's camera permission in the browser's site settings; try "Sensors only (skip camera)" to keep going on the compass tests.
+      <strong>Heading readout stuck on "—":</strong> Task 4 will tell us why (likely no absolute event — note it and continue).</div>
+  </section>
+
+  <!-- ============ TASK 4 ============ -->
+  <section class="task" id="t4">
+    <div class="task-head"><span class="task-num">4</span><span class="task-time">≈ 10 min per device</span></div>
+    <h2 class="task-title">Run the device &amp; sensor audit</h2>
+    <p>The readout panel already probed everything. Walk down it and copy the values. This is
+      blueprint task 0‑1.</p>
+
+    <h3>Steps (per device, outdoors)</h3>
+    <ol class="steps" data-task="4">
+      <li><input type="checkbox"><span class="txt">With the sheet open, read each row of the top panel. Copy the values for: <span class="m">source</span>, <span class="m">absolute seen</span>, <span class="m">event rate</span>, <span class="m">gyro rate z</span>, <span class="m">gps accuracy</span>, <span class="m">gps altitude</span>, <span class="m">camera</span>, <span class="m">camera FOV exposed</span>.</span></li>
+      <li><input type="checkbox"><span class="txt">Rotate slowly through a full circle. Confirm the heading readout and tick-strip move smoothly and the cardinal letters (N/E/S/W) land in sensible places.</span></li>
+      <li><input type="checkbox"><span class="txt">Note the <span class="m">source</span> string exactly — this tells us the heading pipeline for that platform.</span></li>
+      <li><input type="checkbox"><span class="txt">Paste the values into the note below (or wait and use the JSON export in Task 7).</span></li>
+    </ol>
+
+    <h3>What "good" looks like</h3>
+    <div class="tw"><table>
+      <thead><tr><th>Row</th><th>Healthy</th><th>Concern</th></tr></thead>
+      <tbody>
+        <tr><td><b>source</b></td><td>iOS: <span class="m">…webkitCompassHeading (true)</span> · Android: <span class="m">w3c:absolute alpha</span></td><td class="bad"><span class="m">RELATIVE alpha</span> → phone can't give absolute heading</td></tr>
+        <tr><td><b>absolute seen</b></td><td>yes</td><td>NO on Android is a real problem for that device</td></tr>
+        <tr><td><b>event rate</b></td><td>≥ ~20 Hz</td><td>&lt; 8 Hz → laggy, note the model</td></tr>
+        <tr><td><b>gyro rate z</b></td><td>a number that moves when you rotate</td><td>"— (no devicemotion)" → complementary filter unavailable there</td></tr>
+        <tr><td><b>gps accuracy</b></td><td>&lt; 20 m outdoors after ~30 s</td><td>&gt; 50 m → wait longer / clearer sky</td></tr>
+        <tr><td><b>gps altitude</b></td><td>a value ± a few tens of m</td><td>"null" → expect reduced vertical accuracy (blueprint already plans for this)</td></tr>
+        <tr><td><b>camera FOV exposed</b></td><td>almost always "no"</td><td>— (Stage 3 calibration handles it)</td></tr>
+      </tbody>
+    </table></div>
+
+    <textarea class="note" data-note="4" placeholder="Device 1 audit — source: … | absolute seen: … | rate: … Hz | gyro: … | gps acc: … m | altitude: … | FOV exposed: …&#10;&#10;Device 2 audit — …"></textarea>
+  </section>
+
+  <!-- ============ TASK 5 ============ -->
+  <section class="task" id="t5">
+    <div class="task-head"><span class="task-num">5</span><span class="task-time">≈ 10 min per device</span></div>
+    <h2 class="task-title">Drift watch + jitter measurement</h2>
+    <p>Two tests, both with the phone <strong>completely still</strong>. The first is the
+      pass/fail for the whole stage; the second feeds the smoothing decision (blueprint tasks
+      0‑3 and the DoD).</p>
+
+    <h3>5a · 60-second drift watch</h3>
+    <ol class="steps" data-task="5a">
+      <li><input type="checkbox"><span class="txt">In the sheet, set <strong>target true bearing</strong> to a round number (e.g. 90).</span></li>
+      <li><input type="checkbox"><span class="txt">Turn your body until the <span class="m">TARGET</span> label is centred on the reticle and turns <strong>green</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Rest the phone on a flat surface (or a tripod) pointing that way. <strong>Do not touch it for 60 seconds.</strong></span></li>
+      <li><input type="checkbox"><span class="txt">Watch the label. Record: does it stay green / within ±5° the whole minute? Any slow creep?</span></li>
+      <li><input type="checkbox"><span class="txt">Repeat facing a different direction (e.g. 0 and 180) — some phones drift only near certain headings.</span></li>
+    </ol>
+
+    <h3>5b · 30-second jitter test</h3>
+    <ol class="steps" data-task="5b">
+      <li><input type="checkbox"><span class="txt">Lay the phone flat and still, pointing at a fixed mark.</span></li>
+      <li><input type="checkbox"><span class="txt">Tap <strong>"Start 30 s jitter test"</strong>. Don't touch the phone until it finishes.</span></li>
+      <li><input type="checkbox"><span class="txt">Record the reported <span class="m">σ</span>, <span class="m">peak-to-peak</span>, sample <span class="m">Hz</span>, and the verdict line.</span></li>
+      <li><input type="checkbox"><span class="txt">Run it twice more and keep the worst peak-to-peak.</span></li>
+    </ol>
+
+    <h3>5c · Smoothing feel</h3>
+    <ol class="steps" data-task="5c">
+      <li><input type="checkbox"><span class="txt">While panning back and forth, cycle the smoothing selector <strong>None → EMA → Complementary</strong> and move the α slider.</span></li>
+      <li><input type="checkbox"><span class="txt">Note which setting tracks quickly <em>and</em> settles when you stop. If "Complementary" drifts or runs away, write that down — the gyro sign may be device-specific (that's a Stage 3 finding).</span></li>
+    </ol>
+
+    <div class="box"><span class="h">Record</span>Per device: drift verdict (pass/fail + which headings), jitter σ / peak-to-peak / Hz, and which smoothing felt best.</div>
+    <textarea class="note" data-note="5" placeholder="Device 1 — drift @90°: … | @0°: … | @180°: …  ||  jitter σ … ° / p2p … ° / … Hz / verdict: …  ||  best smoothing: …&#10;&#10;Device 2 — …"></textarea>
+  </section>
+
+  <!-- ============ TASK 6 ============ -->
+  <section class="task" id="t6">
+    <div class="task-head"><span class="task-num">6</span><span class="task-time">≈ 20 min per device</span></div>
+    <h2 class="task-title">Known-bearing accuracy check</h2>
+    <p>The real test: does the label land on the right direction in the real world, and is the
+      phone's heading <strong>true</strong> or <strong>magnetic</strong> north? You need landmarks
+      whose true bearing you can work out.</p>
+
+    <h3>First — get a landmark's true bearing</h3>
+    <p>Pick something 100 m+ away that you can also pinpoint on a map: a transmission tower, a
+      bridge pier, a lone tree, a distinct summit, or a road that runs dead straight away from you.
+      Then use <strong>either</strong> method:</p>
+
+    <div class="box"><span class="h">Method A — two coordinates</span>
+      <ol style="margin:6px 0 0 18px; padding:0; font-size:14.5px;">
+        <li>Read <strong>your</strong> lat/lon from the spike's <span class="m">position</span> row.</li>
+        <li>Long-press the landmark in Google Maps → copy its lat/lon.</li>
+        <li>Paste both into any <em>"initial bearing between two coordinates"</em> calculator, or compute<br>
+          <span class="m">θ = atan2( sin Δλ·cos φ₂ , cos φ₁·sin φ₂ − sin φ₁·cos φ₂·cos Δλ )</span>, normalised to 0–360°.</li>
+        <li>That θ is the <strong>true</strong> bearing (map north = true north).</li>
+      </ol>
+    </div>
+    <div class="box"><span class="h">Method B — the sun (rough, no map needed)</span>
+      At <strong>local solar noon</strong> the sun sits due <strong>south</strong> (true 180°) in the Indian Himalaya.
+      Face the sun's horizontal direction at noon and that's your 180° reference; sight the landmark relative to it.
+      Good to ~±3°, fine as a sanity check.</div>
+
+    <h3>Then — log the checks</h3>
+    <ol class="steps" data-task="6">
+      <li><input type="checkbox"><span class="txt">Stand still at your measured spot. Aim the centre reticle exactly at the landmark.</span></li>
+      <li><input type="checkbox"><span class="txt">Type the landmark's true bearing into <strong>"landmark true°"</strong> and tap <strong>"Log check"</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Repeat for <strong>3–5 landmarks in different directions</strong> (spread around the compass if you can).</span></li>
+      <li><input type="checkbox"><span class="txt">Read the tool's summary: it shows the error assuming raw = true vs raw = magnetic, and which fits better.</span></li>
+      <li><input type="checkbox"><span class="txt">Set the spike's <strong>"heading is"</strong> selector to whichever assumption won (<span class="m">magnetic</span> or <span class="m">already true</span>). Re-aim at a landmark — the <span class="m">TARGET</span> label should now sit within ±5°.</span></li>
+    </ol>
+
+    <div class="box ok"><span class="h">Expected</span>
+      iOS almost always → <strong>already true</strong> (error vs true &lt; ~3°).
+      Android → usually <strong>magnetic</strong>, so error-vs-magnetic is small and error-vs-true is off by the local declination (~0.5–2° here — small, but it's the pattern that matters).</div>
+
+    <textarea class="note" data-note="6" placeholder="Device 1 — checks: landmark 47° → err(true) …° / err(mag) …° ; landmark 152° → … ; …&#10;Conclusion: heading is TRUE / MAGNETIC. Label within ±5° after setting it? …&#10;&#10;Device 2 — …"></textarea>
+  </section>
+
+  <!-- ============ TASK 7 ============ -->
+  <section class="task" id="t7">
+    <div class="task-head"><span class="task-num">7</span><span class="task-time">≈ 20 min</span></div>
+    <h2 class="task-title">Export, declination file, decisions, exit</h2>
+    <p>Pull the data together, grab the one asset, and record the four decisions that unblock
+      Stage 1.</p>
+
+    <h3>7a · Export each device's results</h3>
+    <ol class="steps" data-task="7a">
+      <li><input type="checkbox"><span class="txt">On each phone, in the spike sheet, tap <strong>"Copy JSON"</strong> (or "Download JSON").</span></li>
+      <li><input type="checkbox"><span class="txt">Paste each blob into the matching <span class="m">### Device N</span> block in <span class="m">docs/spike/STAGE-0.md</span> → "Results log".</span></li>
+      <li><input type="checkbox"><span class="txt">Fill each blob's <span class="m">notes_fill_in</span> fields: <span class="m">driftOver60sPass</span>, <span class="m">cameraLatency</span> (does the video feel real-time?), <span class="m">subjectiveTracking</span> (does the label feel glued to the world?).</span></li>
+    </ol>
+
+    <h3>7b · Download the magnetic-declination file (blueprint task 0‑5)</h3>
+    <ol class="steps" data-task="7b">
+      <li><input type="checkbox"><span class="txt">Go to <a class="link" href="https://www.ncei.noaa.gov/products/world-magnetic-model" target="_blank" rel="noopener">ncei.noaa.gov/products/world-magnetic-model</a>.</span></li>
+      <li><input type="checkbox"><span class="txt">Download the <strong>WMM2025 coefficient file</strong> (<span class="m">WMM.COF</span> / <span class="m">WMM2025.COF</span>, public domain, plain text).</span></li>
+      <li><input type="checkbox"><span class="txt">Save it as <span class="m">docs/spike/wmm.cof</span> in the repo. Check its size — it should be ~5–6 KB.</span></li>
+      <li><input type="checkbox"><span class="txt">Record the size in decision <strong>D‑0.2</strong> below. (No code now — the evaluator that reads it is a Stage 3 task.)</span></li>
+    </ol>
+
+    <h3>7c · Record the decisions</h3>
+
+    <div class="decision">
+      <span class="id">D‑0.1 · Smoothing approach</span> — from Task 5
+      <label>Worst peak-to-peak jitter observed, and on which device</label>
+      <input class="field" data-field="d01a" placeholder="e.g. 6.4° on Redmi Note 11" />
+      <label>Chosen filter</label>
+      <input class="field" data-field="d01b" placeholder="EMA α≈0.18  /  Complementary  /  Complementary + drag-align" />
+    </div>
+
+    <div class="decision">
+      <span class="id">D‑0.2 · Declination source</span> — from Task 7b
+      <label>WMM.COF file size</label>
+      <input class="field" data-field="d02a" placeholder="e.g. 5.6 KB" />
+      <label>Does any tested phone already give TRUE heading? (so declination only matters on the others)</label>
+      <input class="field" data-field="d02b" placeholder="e.g. iPhone yes, Pixel no" />
+    </div>
+
+    <div class="decision">
+      <span class="id">D‑0.3 · Default assumed hFOV per platform</span> — starting values for Stage 3 calibration
+      <label>iOS default hFOV° / Android default hFOV°</label>
+      <input class="field" data-field="d03" placeholder="e.g. iOS 52 / Android 55" />
+    </div>
+
+    <div class="decision">
+      <span class="id">D‑0.4 · Target test devices for the rest of the build</span>
+      <label>Primary iOS / Primary Android / Low-end check</label>
+      <input class="field" data-field="d04" placeholder="e.g. iPhone 13 / Pixel 7 / Redmi Note 11" />
+    </div>
+
+    <h3>7d · Stage 0 exit checklist</h3>
+    <ol class="steps" data-task="7d">
+      <li><input type="checkbox"><span class="txt">Spike deployed to HTTPS and opens on all test devices.</span></li>
+      <li><input type="checkbox"><span class="txt">Audit table filled for <strong>each</strong> device in STAGE‑0.md.</span></li>
+      <li><input type="checkbox"><span class="txt"><span class="m">absolute</span> orientation event confirmed present (or its absence noted per device).</span></li>
+      <li><input type="checkbox"><span class="txt">60-second drift watch: <strong>pass</strong> on the primary iOS and Android devices.</span></li>
+      <li><input type="checkbox"><span class="txt">Known-bearing check: label within <strong>±5°</strong> of true after choosing the right true/magnetic assumption.</span></li>
+      <li><input type="checkbox"><span class="txt">Jitter measured on all devices; D‑0.1 filled.</span></li>
+      <li><input type="checkbox"><span class="txt"><span class="m">WMM.COF</span> downloaded, size confirmed; D‑0.2 filled.</span></li>
+      <li><input type="checkbox"><span class="txt">D‑0.3 and D‑0.4 filled.</span></li>
+      <li><input type="checkbox"><span class="txt"><span class="m">BUILD-LOG.md</span> Stage 0 row set to ✅ with the date.</span></li>
+      <li><input type="checkbox"><span class="txt">Send Claude the JSON exports + drift/bearing results to lock D‑0.1 and D‑0.3.</span></li>
+    </ol>
+
+    <div class="box ok"><span class="h">Done</span>When every box above is ticked, Stage 1 — the <span class="m">/api/peaks?bbox=</span> backend — can start.</div>
+  </section>
+
+  <div class="foot">
+    TrekSense Peak Finder · Stage 0 field runbook · pairs with <span class="m">docs/spike/sensor-spike.html</span>
+    and <span class="m">docs/spike/STAGE-0.md</span> · progress and notes save in this browser only.
+  </div>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+    var KEY = "ts-pf-stage0-runbook";
+    var store = {};
+    try { store = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { store = {}; }
+    function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
+
+    // checkboxes
+    var boxes = [];
+    Array.prototype.forEach.call(document.querySelectorAll("ol.steps"), function (ol) {
+      var task = ol.getAttribute("data-task");
+      Array.prototype.forEach.call(ol.querySelectorAll('input[type="checkbox"]'), function (cb, i) {
+        var id = "s:" + task + ":" + i;
+        cb.dataset.id = id;
+        if (store[id]) cb.checked = true;
+        cb.addEventListener("change", function () { store[id] = cb.checked ? 1 : 0; save(); refresh(); });
+        boxes.push(cb);
+      });
+    });
+
+    // notes + fields
+    Array.prototype.forEach.call(document.querySelectorAll("textarea.note"), function (ta) {
+      var id = "n:" + ta.getAttribute("data-note");
+      if (store[id]) ta.value = store[id];
+      ta.addEventListener("input", function () { store[id] = ta.value; save(); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("input.field"), function (f) {
+      var id = "f:" + f.getAttribute("data-field");
+      if (store[id]) f.value = store[id];
+      f.addEventListener("input", function () { store[id] = f.value; save(); });
+    });
+
+    var fill = document.getElementById("fill"), pct = document.getElementById("pct");
+    function refresh() {
+      var done = 0;
+      boxes.forEach(function (b) { if (b.checked) done++; });
+      var p = boxes.length ? Math.round(done / boxes.length * 100) : 0;
+      fill.style.width = p + "%";
+      pct.textContent = p + "%";
+    }
+    refresh();
+  })();
+</script>

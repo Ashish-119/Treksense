@@ -1,0 +1,815 @@
+<title>Peak Finder Preview</title>
+<meta name="description" content="Interactive UI mockup of the TrekSense Peak Finder AR view — simulated skyline, compass HUD, peak labels and map mode." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --ground: #ecebe4;
+    --surface: #f7f6f1;
+    --ink: #1a1d20;
+    --ink-soft: #3d434a;
+    --muted: #6a727c;
+    --line: #d4d2c8;
+    --accent: #a85e14;
+    --summit: #2f6b4e;
+    --page-bg: #14181d;
+    --page-ink: #e9eae5;
+    --page-muted: #8a929c;
+    --page-line: #2b323b;
+    --page-card: #1b2027;
+
+    --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --f-body: "Source Serif 4", Georgia, serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --page-bg: #e6e4da;
+      --page-ink: #1a1d20;
+      --page-muted: #5c636c;
+      --page-line: #cfccc0;
+      --page-card: #f5f4ee;
+    }
+  }
+  :root[data-theme="light"] {
+    --page-bg: #e6e4da;
+    --page-ink: #1a1d20;
+    --page-muted: #5c636c;
+    --page-line: #cfccc0;
+    --page-card: #f5f4ee;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: var(--f-body);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+  h1, h2, h3 { font-family: var(--f-display); }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    display: grid;
+    gap: 44px;
+  }
+  @media (min-width: 940px) {
+    .wrap { grid-template-columns: 420px 1fr; align-items: start; gap: 56px; padding-top: 56px; }
+  }
+
+  /* ---------- intro / annotations column ---------- */
+  .intro .eyebrow {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 14px;
+  }
+  .intro h1 {
+    font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.4rem);
+    line-height: 1.08; letter-spacing: -0.02em; margin: 0 0 14px; text-wrap: balance;
+  }
+  .intro p { font-size: 1rem; color: var(--page-ink); margin: 0 0 14px; max-width: 46ch; }
+  .intro .fine { font-size: 0.85rem; color: var(--page-muted); font-family: var(--f-mono); line-height: 1.6; }
+
+  .callouts { margin-top: 26px; display: grid; gap: 2px; border: 1px solid var(--page-line); }
+  .callouts dt {
+    font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent);
+    background: var(--page-card); padding: 10px 14px 3px;
+  }
+  .callouts dd {
+    margin: 0; padding: 0 14px 11px; background: var(--page-card);
+    font-size: 0.9rem; color: var(--page-ink);
+  }
+
+  .legend { margin-top: 22px; font-family: var(--f-mono); font-size: 11.5px; color: var(--page-muted); }
+  .legend b { color: var(--page-ink); font-weight: 600; }
+
+  /* ---------- device ---------- */
+  .stage { display: flex; justify-content: center; }
+  .device {
+    width: 400px; max-width: 100%;
+    aspect-ratio: 400 / 812;
+    background: #0a0c0f;
+    border-radius: 46px;
+    padding: 12px;
+    box-shadow: 0 40px 90px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
+    position: relative;
+  }
+  .screen {
+    position: absolute; inset: 12px;
+    border-radius: 36px;
+    overflow: hidden;
+    background: #101820;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  /* status bar */
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-family: var(--f-mono); font-size: 12px; color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  .statusbar .dots { letter-spacing: 1px; }
+
+  /* camera / AR view */
+  .view { position: absolute; inset: 0; cursor: grab; }
+  .view:active { cursor: grabbing; }
+  .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
+  .leaders line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
+  .leaders circle { fill: #fff; }
+
+  /* HUD */
+  .hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; font-family: var(--f-mono); }
+  .hud .pointer-on { pointer-events: auto; }
+
+  .compass-strip {
+    position: absolute; top: 50px; left: 0; right: 0; height: 30px;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .compass-strip .ticks { position: absolute; top: 0; height: 100%; }
+  .compass-strip .tick { position: absolute; top: 8px; width: 1px; height: 7px; background: rgba(255,255,255,0.5); }
+  .compass-strip .tick.major { height: 13px; top: 4px; background: rgba(255,255,255,0.85); }
+  .compass-strip .card {
+    position: absolute; top: 15px; transform: translateX(-50%);
+    font-size: 12px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .compass-readout {
+    position: absolute; top: 82px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #fff; font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 3px; z-index: 2;
+  }
+  .compass-readout::before {
+    content: ""; position: absolute; left: 50%; top: -5px; transform: translateX(-50%);
+    border: 5px solid transparent; border-bottom-color: var(--accent); border-top: 0;
+  }
+
+  .chip {
+    position: absolute; display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(12,16,20,0.62); color: #fff; backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 11px; padding: 6px 10px; border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .chip .led { width: 7px; height: 7px; border-radius: 50%; background: #57c98a; flex: none; box-shadow: 0 0 6px #57c98a; }
+  .chip .led.amber { background: #e6a94b; box-shadow: 0 0 6px #e6a94b; }
+  .chip.left { top: 118px; left: 14px; }
+  .chip.right { top: 118px; right: 14px; }
+  .chip.right.warn { background: rgba(120,72,20,0.82); border-color: rgba(230,169,75,0.5); cursor: pointer; }
+
+  .reticle { position: absolute; top: 50%; left: 50%; width: 46px; height: 46px; transform: translate(-50%,-50%); opacity: 0.8; }
+  .reticle::before, .reticle::after {
+    content: ""; position: absolute; background: rgba(255,255,255,0.7);
+  }
+  .reticle::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+  .reticle::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+  .reticle span { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; }
+
+  /* peak labels */
+  .peak-label {
+    position: absolute; z-index: 14; pointer-events: auto; cursor: pointer;
+    transform: translate(-50%, -100%);
+    background: rgba(12,16,20,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-left: 2px solid var(--accent);
+    border-radius: 4px; padding: 5px 9px; white-space: nowrap;
+    color: #fff; font-family: var(--f-mono);
+    transition: transform 0.08s linear;
+  }
+  .peak-label .nm { font-size: 12px; font-weight: 600; letter-spacing: -0.01em; }
+  .peak-label .mt { font-size: 10px; color: rgba(255,255,255,0.72); margin-top: 1px; }
+  .peak-label.far { opacity: 0.82; }
+  .peak-label.far .nm { font-size: 11px; }
+  .peak-label:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* mode toggle */
+  .modes {
+    position: absolute; bottom: 74px; left: 50%; transform: translateX(-50%); z-index: 24;
+    display: flex; background: rgba(12,16,20,0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 22px; padding: 3px; pointer-events: auto;
+    font-family: var(--f-mono);
+  }
+  .modes button {
+    border: 0; background: transparent; color: rgba(255,255,255,0.7);
+    font: inherit; font-size: 11px; padding: 6px 16px; border-radius: 19px; cursor: pointer;
+  }
+  .modes button.on { background: var(--accent); color: #fff; }
+
+  /* bottom nav */
+  .botnav {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 62px; z-index: 22;
+    display: flex; align-items: center; justify-content: space-around;
+    background: rgba(10,13,17,0.72); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-family: var(--f-mono); pointer-events: auto;
+  }
+  .botnav a { display: flex; flex-direction: column; align-items: center; gap: 3px; color: rgba(255,255,255,0.55); font-size: 9px; text-decoration: none; }
+  .botnav a svg { width: 20px; height: 20px; }
+  .botnav a.active { color: #fff; }
+  .botnav a.active svg { color: var(--accent); }
+
+  /* map mode */
+  .map-view { position: absolute; inset: 0; z-index: 15; background: radial-gradient(circle at 50% 46%, #1c2630, #0e1319); display: none; }
+  .map-view.show { display: block; }
+  .map-view svg { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); }
+  .map-view .ring { fill: none; stroke: rgba(255,255,255,0.16); }
+  .map-view .ring-lbl { fill: rgba(255,255,255,0.45); font-family: var(--f-mono); font-size: 9px; }
+  .map-view .wedge { fill: rgba(168,94,20,0.28); stroke: rgba(224,145,63,0.6); stroke-width: 1; }
+  .map-view .needle { stroke: #e0913f; stroke-width: 2; }
+  .map-view .card { fill: rgba(255,255,255,0.75); font-family: var(--f-mono); font-size: 11px; font-weight: 600; }
+  .map-view .dot { fill: #fff; cursor: pointer; }
+  .map-view .dot.sel { fill: var(--accent); }
+  .map-view .dot-lbl { fill: rgba(255,255,255,0.8); font-family: var(--f-mono); font-size: 9px; pointer-events: none; }
+  .map-view .me { fill: #e0913f; }
+
+  /* detail sheet */
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: #12171d; color: #fff;
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid rgba(255,255,255,0.14);
+    transform: translateY(102%); transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+    padding: 8px 18px 20px; font-family: var(--f-body);
+  }
+  .sheet.show { transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+  .sheet .grab { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); margin: 6px auto 12px; }
+  .sheet .close { position: absolute; top: 12px; right: 14px; background: none; border: 0; color: rgba(255,255,255,0.6); font-size: 20px; cursor: pointer; line-height: 1; }
+  .sheet h3 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
+  .sheet .sub { font-family: var(--f-mono); font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+  .sheet .big { font-family: var(--f-display); font-weight: 800; font-size: 2.1rem; margin: 12px 0 2px; letter-spacing: -0.02em; }
+  .sheet .big small { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.5); font-family: var(--f-mono); }
+  .sheet .stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .sheet .stats span {
+    font-family: var(--f-mono); font-size: 10.5px; padding: 4px 9px; border-radius: 3px;
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.82);
+  }
+  .sheet .stats span.warn { background: rgba(230,169,75,0.16); color: #e6a94b; }
+  .sheet .prof { margin: 14px 0 4px; }
+  .sheet .prof svg { width: 100%; height: 54px; display: block; }
+  .sheet .prof path.ln { fill: none; stroke: rgba(255,255,255,0.4); stroke-width: 1.5; }
+  .sheet .prof path.fl { fill: rgba(255,255,255,0.06); stroke: none; }
+  .sheet .prof .sight { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 2; }
+  .sheet .acts { display: flex; gap: 10px; margin-top: 14px; }
+  .sheet .acts button {
+    flex: 1; font-family: var(--f-mono); font-size: 12px; font-weight: 500;
+    padding: 11px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18);
+    background: transparent; color: #fff; cursor: pointer;
+  }
+  .sheet .acts button.primary { background: var(--accent); border-color: var(--accent); }
+
+  /* calibration overlay */
+  .calib {
+    position: absolute; inset: 0; z-index: 35; display: none;
+    background: rgba(8,11,14,0.82); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    color: #fff; font-family: var(--f-mono); text-align: center; padding: 30px;
+  }
+  .calib.show { display: flex; }
+  .calib svg { width: 120px; height: 90px; }
+  .calib .fig { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 6 8; animation: dash 1.1s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -28; } }
+  @media (prefers-reduced-motion: reduce) { .calib .fig { animation: none; } }
+  .calib p { margin: 0; font-size: 13px; max-width: 26ch; line-height: 1.5; }
+  .calib .hint { color: rgba(255,255,255,0.55); font-size: 11px; }
+  .calib button {
+    margin-top: 4px; font: inherit; font-size: 12px; color: #fff; background: var(--accent);
+    border: 0; border-radius: 8px; padding: 9px 22px; cursor: pointer;
+  }
+
+  .hint-drag {
+    position: absolute; bottom: 146px; left: 50%; transform: translateX(-50%); z-index: 23;
+    font-family: var(--f-mono); font-size: 10px; color: rgba(255,255,255,0.6);
+    background: rgba(12,16,20,0.5); padding: 4px 10px; border-radius: 12px;
+    transition: opacity 0.3s; pointer-events: none;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+  <div class="intro">
+    <p class="eyebrow">TrekSense · Screen preview</p>
+    <h1>Peak Finder, once it's built</h1>
+    <p>
+      A working mockup of the AR view from Blueprint&nbsp;v2 — the skyline and sensors
+      are simulated, but the layout, the label behaviour, the compass HUD, the detail
+      sheet and map mode are exactly what the real feature would show.
+    </p>
+    <p><strong>Try it:</strong> drag across the screen to look around, tap a peak label
+      for its detail card, switch to <em>Map</em>, or tap the amber “compass low” chip
+      to see the calibration flow.</p>
+    <p class="fine">Viewpoint: above Sankri / Juda&nbsp;Ka&nbsp;Talab (≈&nbsp;2,750&nbsp;m),
+      Har&nbsp;Ki&nbsp;Dun valley, Uttarakhand. Peak names, elevations, bearings and
+      distances are real; the ridge silhouette is illustrative.</p>
+
+    <dl class="callouts">
+      <dt>Compass ribbon</dt>
+      <dd>True heading (declination-corrected) with the amber readout locked to the reticle. Scrolls as you pan.</dd>
+      <dt>Status chip · left</dt>
+      <dd>Where the on-device data is centred and how old it is. Lit green when a fresh prepare is possible; here it's offline, prepared 2&nbsp;h ago.</dd>
+      <dt>Sensor chip · right</dt>
+      <dd>Pose confidence. Tap when it reads “low” to run figure-eight calibration.</dd>
+      <dt>Peak labels</dt>
+      <dd>Placed by bearing (x) and elevation angle (y). Nearest peak sits on top; overlapping labels stack upward with leader lines to the summit.</dd>
+      <dt>AR / Map toggle</dt>
+      <dd>Map mode is the no-camera fallback: a north-up radial plot with the field-of-view wedge and a peak per dot.</dd>
+    </dl>
+
+    <p class="legend"><b>Not final visual design</b> — spacing, type and colour follow the
+      blueprint's system and are open to change.</p>
+  </div>
+
+  <div class="stage">
+    <div class="device">
+      <div class="screen" id="screen">
+
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="dots">▪ ▪ ▪&nbsp;&nbsp;TrekSense&nbsp;&nbsp;▮ 62%</span>
+        </div>
+
+        <!-- AR VIEW -->
+        <div class="view" id="view">
+          <canvas id="sky"></canvas>
+          <svg class="leaders" id="leaders" preserveAspectRatio="none"></svg>
+        </div>
+
+        <!-- MAP VIEW -->
+        <div class="map-view" id="mapView">
+          <svg id="mapSvg" width="330" height="330" viewBox="0 0 330 330" role="img" aria-label="Radial map of peaks around you, north up"></svg>
+        </div>
+
+        <!-- HUD -->
+        <div class="hud" id="hud">
+          <div class="compass-readout" id="readout">88° E</div>
+          <div class="compass-strip"><div class="ticks" id="ticks"></div></div>
+
+          <div class="chip left" id="statusChip"><span class="led"></span><span id="statusTxt">Offline · Sankri · 2h ago</span></div>
+          <button class="chip right pointer-on warn" id="sensorChip" type="button"><span class="led amber" id="sensorLed"></span><span id="sensorTxt">Compass low — calibrate</span></button>
+
+          <div class="reticle"><span></span></div>
+
+          <div class="hint-drag" id="dragHint">drag to look around</div>
+
+          <div class="modes">
+            <button class="on" data-mode="ar" type="button">AR view</button>
+            <button data-mode="map" type="button">Map</button>
+          </div>
+
+          <nav class="botnav" aria-label="App navigation (preview)">
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/></svg><span>Explore</span></a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Route</span></a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19c4 0 3-6 7-6s3 6 7 6M20 5l-4 4M20 5h-4M20 5v4"/></svg><span>With&nbsp;Us</span></a>
+            <a><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 4h12v17l-6-4.5L6 21Z"/></svg><span>Saved</span></a>
+            <a class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m2 20 5.5-10 3.5 6 4-8L22 20H2Z"/></svg><span>Peaks</span></a>
+          </nav>
+        </div>
+
+        <!-- DETAIL SHEET -->
+        <div class="sheet" id="sheet" role="dialog" aria-label="Peak detail">
+          <button class="close" id="sheetClose" aria-label="Close">×</button>
+          <div class="grab"></div>
+          <h3 id="sName">Peak</h3>
+          <div class="sub" id="sSub">—</div>
+          <div class="big"><span id="sFt">0</span> ft <small>/ <span id="sM">0</span> m</small></div>
+          <div class="stats" id="sStats"></div>
+          <div class="prof">
+            <svg viewBox="0 0 300 54" preserveAspectRatio="none" aria-hidden="true">
+              <path class="fl" d="M0 54 L0 40 C 60 36 90 20 140 12 C 180 6 210 30 240 26 C 265 23 285 34 300 30 L300 54 Z"/>
+              <path class="ln" d="M0 40 C 60 36 90 20 140 12 C 180 6 210 30 240 26 C 265 23 285 34 300 30"/>
+              <line class="sight" x1="6" y1="46" x2="142" y2="12"/>
+            </svg>
+          </div>
+          <div class="acts">
+            <button type="button">Save sighting</button>
+            <button type="button" class="primary">Directions</button>
+          </div>
+        </div>
+
+        <!-- CALIBRATION -->
+        <div class="calib" id="calib">
+          <svg viewBox="0 0 120 90" aria-hidden="true"><path class="fig" d="M30 45 C 30 15 90 15 90 45 C 90 75 30 75 30 45 Z"/></svg>
+          <p>Move your phone in a figure&#8209;eight to calibrate the compass.</p>
+          <p class="hint" id="calibHint">Reading the magnetometer…</p>
+          <button type="button" id="calibDone">Done</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- viewpoint + real peak data (bearings/elevations/distances ≈ from Sankri area) ----
+  var PEAKS = [
+    { name: "Swargarohini I",           m: 6252, km: 14.9, brg: 74.0,  el: 13.1, prom: 1094 },
+    { name: "Swargarohini II",          m: 6247, km: 15.4, brg: 76.5,  el: 12.5, prom: 320  },
+    { name: "Hata Peak",                m: 4865, km: 11.0, brg: 61.0,  el: 10.7, prom: 260  },
+    { name: "Kala Nag (Black Peak)",    m: 6387, km: 27.1, brg: 92.7,  el: 7.4,  prom: 1284 },
+    { name: "Bandarpoonch (White Pk)",  m: 6316, km: 32.3, brg: 98.9,  el: 6.0,  prom: 1516 },
+    { name: "Srikantha",                m: 6133, km: 50.9, brg: 100.8, el: 3.6,  prom: 1284 },
+    { name: "Ranglana",                 m: 5554, km: 55.2, brg: 101.6, el: 2.7,  prom: 620  },
+    { name: "Draupadi ka Danda II",     m: 5670, km: 41.5, brg: 118.0, el: 3.9,  prom: 480  }
+  ];
+  var OBS_M = 2750;
+  var HFOV = 55;            // horizontal field of view, degrees
+  var VFOV_FACTOR = 1.35;   // vFOV / hFOV for this portrait crop
+
+  var state = { heading: 88, pitch: 8, mode: "ar", sel: null, calibrated: false };
+
+  var screenEl = document.getElementById("screen");
+  var view = document.getElementById("view");
+  var canvas = document.getElementById("sky");
+  var ctx = canvas.getContext("2d");
+  var leaders = document.getElementById("leaders");
+  var hud = document.getElementById("hud");
+  var ticks = document.getElementById("ticks");
+  var readout = document.getElementById("readout");
+  var mapView = document.getElementById("mapView");
+  var mapSvg = document.getElementById("mapSvg");
+  var dragHint = document.getElementById("dragHint");
+
+  var W = 400, H = 812, DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize() {
+    var r = view.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    leaders.setAttribute("viewBox", "0 0 " + W + " " + H);
+    render();
+  }
+
+  // ---- projection helpers ----
+  function norm180(d) { d = ((d + 180) % 360 + 360) % 360 - 180; return d; }
+  function ppdH() { return W / HFOV; }
+  function ppdV() { return H / (HFOV * VFOV_FACTOR); }
+  function horizonY() { return H * 0.54 + state.pitch * ppdV(); }
+  function xOf(brg) { return W / 2 + norm180(brg - state.heading) * ppdH(); }
+  function yOf(el)  { return horizonY() - (el - 0) * ppdV(); }
+  function visible(brg) { return Math.abs(norm180(brg - state.heading)) < HFOV / 2 + 8; }
+
+  // ---- sky / skyline canvas ----
+  function ridgeHeight(angle, seed, amp) {
+    var a = angle * Math.PI / 180;
+    return (Math.sin(a * 3.1 + seed) * 0.5 + Math.sin(a * 7.3 + seed * 2.0) * 0.3 + Math.sin(a * 13.7 + seed) * 0.2) * amp;
+  }
+
+  function drawSky() {
+    var hy = horizonY();
+    // sky gradient — dawn
+    var g = ctx.createLinearGradient(0, 0, 0, hy + 40);
+    g.addColorStop(0, "#20344f");
+    g.addColorStop(0.45, "#5b6f8c");
+    g.addColorStop(0.72, "#c9a087");
+    g.addColorStop(1, "#e9cdb1");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, hy + 40);
+    // ground haze
+    var gg = ctx.createLinearGradient(0, hy - 10, 0, H);
+    gg.addColorStop(0, "#d8c3ad");
+    gg.addColorStop(1, "#7d7566");
+    ctx.fillStyle = gg;
+    ctx.fillRect(0, hy - 10, W, H - hy + 10);
+
+    // soft sun glow near heading 95
+    var sunX = xOf(96), sunY = hy - 60;
+    var sg = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 150);
+    sg.addColorStop(0, "rgba(255,236,200,0.55)");
+    sg.addColorStop(1, "rgba(255,236,200,0)");
+    ctx.fillStyle = sg;
+    ctx.fillRect(0, 0, W, hy + 40);
+
+    // distant ranges (3 layers)
+    var layers = [
+      { seed: 1.0, amp: 26, base: 8,  col: "#8ea3bd", haze: 0.55 },
+      { seed: 4.2, amp: 40, base: 26, col: "#6f86a6", haze: 0.4 },
+      { seed: 9.1, amp: 62, base: 54, col: "#41536e", haze: 0.18 }
+    ];
+    for (var li = 0; li < layers.length; li++) {
+      var L = layers[li];
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      for (var px = 0; px <= W; px += 4) {
+        var brg = state.heading + (px - W / 2) / ppdH();
+        var yy = hy - L.base - Math.abs(ridgeHeight(brg, L.seed, L.amp)) - L.amp * 0.2;
+        ctx.lineTo(px, yy);
+      }
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fillStyle = L.col;
+      ctx.globalAlpha = 1;
+      ctx.fill();
+      // haze wash
+      var hz = ctx.createLinearGradient(0, hy - L.amp, 0, hy + 10);
+      hz.addColorStop(0, "rgba(220,205,185,0)");
+      hz.addColorStop(1, "rgba(220,205,185," + L.haze + ")");
+      ctx.fillStyle = hz;
+      ctx.fillRect(0, hy - L.amp - L.base, W, L.amp + L.base + 12);
+    }
+
+    // named massifs — one per real peak, so labels point at a real summit
+    var sorted = PEAKS.slice().sort(function (a, b) { return b.km - a.km; });
+    for (var i = 0; i < sorted.length; i++) {
+      var p = sorted[i];
+      if (!visible(p.brg)) continue;
+      var cx = xOf(p.brg);
+      var sy = yOf(p.el);
+      var hgt = hy - sy;
+      if (hgt < 6) continue;
+      var halfW = Math.max(26, hgt * (0.9 - Math.min(p.km, 60) / 140));
+      var near = p.km < 30;
+      // massif body
+      ctx.beginPath();
+      ctx.moveTo(cx - halfW, hy + 4);
+      ctx.lineTo(cx - halfW * 0.15, sy + hgt * 0.14);
+      ctx.lineTo(cx, sy);
+      ctx.lineTo(cx + halfW * 0.22, sy + hgt * 0.18);
+      ctx.lineTo(cx + halfW, hy + 4);
+      ctx.closePath();
+      var body = ctx.createLinearGradient(0, sy, 0, hy);
+      if (near) { body.addColorStop(0, "#3a4a63"); body.addColorStop(1, "#2b3850"); }
+      else { body.addColorStop(0, "#5a6f8e"); body.addColorStop(1, "#4a5d78"); }
+      ctx.fillStyle = body;
+      ctx.fill();
+      // snow cap
+      ctx.beginPath();
+      ctx.moveTo(cx - halfW * 0.30, sy + hgt * 0.30);
+      ctx.lineTo(cx - halfW * 0.10, sy + hgt * 0.12);
+      ctx.lineTo(cx, sy);
+      ctx.lineTo(cx + halfW * 0.16, sy + hgt * 0.14);
+      ctx.lineTo(cx + halfW * 0.30, sy + hgt * 0.34);
+      ctx.lineTo(cx + halfW * 0.13, sy + hgt * 0.30);
+      ctx.lineTo(cx - halfW * 0.02, sy + hgt * 0.18);
+      ctx.lineTo(cx - halfW * 0.16, sy + hgt * 0.34);
+      ctx.closePath();
+      ctx.fillStyle = near ? "rgba(244,247,252,0.94)" : "rgba(232,238,247,0.8)";
+      ctx.fill();
+      // haze veil over distant massifs
+      if (!near) {
+        ctx.fillStyle = "rgba(220,205,185," + (0.12 + Math.min(p.km, 60) / 260) + ")";
+        ctx.beginPath();
+        ctx.moveTo(cx - halfW, hy + 4);
+        ctx.lineTo(cx, sy);
+        ctx.lineTo(cx + halfW, hy + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // vignette
+    var vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(0,0,0,0.34)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ---- compass ribbon ----
+  function drawTicks() {
+    ticks.innerHTML = "";
+    var cards = { 0: "N", 45: "NE", 90: "E", 135: "SE", 180: "S", 225: "SW", 270: "W", 315: "NW" };
+    var pxPerDeg = W / HFOV;
+    for (var d = -HFOV; d <= HFOV + 360; d += 5) {
+      var brg = Math.round(state.heading / 5) * 5 + d;
+      var off = norm180(brg - state.heading);
+      if (Math.abs(off) > HFOV / 2 + 6) continue;
+      var left = W / 2 + off * pxPerDeg;
+      var bn = ((brg % 360) + 360) % 360;
+      var t = document.createElement("div");
+      t.className = "tick" + (bn % 45 === 0 ? " major" : (bn % 15 === 0 ? " major" : ""));
+      t.style.left = left + "px";
+      ticks.appendChild(t);
+      if (bn % 45 === 0) {
+        var c = document.createElement("div");
+        c.className = "card";
+        c.style.left = left + "px";
+        c.textContent = cards[bn];
+        ticks.appendChild(c);
+      }
+    }
+    var h = ((Math.round(state.heading) % 360) + 360) % 360;
+    var dir = cards[(Math.round(h / 45) * 45) % 360] || "";
+    readout.textContent = h + "° " + dir;
+  }
+
+  // ---- labels + leaders ----
+  function render() {
+    if (state.mode === "ar") { drawSky(); drawTicks(); placeLabels(); }
+    else { drawMap(); }
+  }
+
+  function placeLabels() {
+    // clear old labels
+    Array.prototype.slice.call(hud.querySelectorAll(".peak-label")).forEach(function (n) { n.remove(); });
+    leaders.innerHTML = "";
+
+    var vis = PEAKS.filter(function (p) { return visible(p.brg); })
+                   .sort(function (a, b) { return a.km - b.km; }); // nearest first = priority
+
+    var placed = []; // {x, top, bot, left, right}
+    vis.forEach(function (p, idx) {
+      var x = xOf(p.brg);
+      var summitY = yOf(p.el);
+      var labelW = (p.name.length * 6.6) + 22;
+      var labelH = 34;
+      var gap = 14;
+      var bottom = summitY - gap;      // preferred: just above summit
+      // resolve collisions by pushing upward
+      var moved = true, guard = 0;
+      while (moved && guard < 40) {
+        moved = false; guard++;
+        for (var j = 0; j < placed.length; j++) {
+          var q = placed[j];
+          var overlapX = Math.abs(q.x - x) < (labelW / 2 + q.w / 2 + 6);
+          var top = bottom - labelH;
+          var overlapY = !(top > q.bot || bottom < q.top);
+          if (overlapX && overlapY) { bottom = q.top - 6; moved = true; }
+        }
+      }
+      placed.push({ x: x, w: labelW, top: bottom - labelH, bot: bottom });
+
+      // leader line
+      var ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      ln.setAttribute("x1", x); ln.setAttribute("y1", bottom);
+      ln.setAttribute("x2", x); ln.setAttribute("y2", summitY);
+      leaders.appendChild(ln);
+      var dotc = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dotc.setAttribute("cx", x); dotc.setAttribute("cy", summitY); dotc.setAttribute("r", 2.4);
+      leaders.appendChild(dotc);
+
+      // label
+      var el = document.createElement("button");
+      el.className = "peak-label" + (p.km > 35 ? " far" : "");
+      el.style.left = x + "px";
+      el.style.top = bottom + "px";
+      el.type = "button";
+      el.innerHTML = '<div class="nm">' + p.name + '</div><div class="mt">' +
+        p.m.toLocaleString("en-IN") + ' m · ' + (p.km < 20 ? p.km.toFixed(1) : Math.round(p.km)) + ' km · ' + bearingWord(p.brg) + '</div>';
+      el.addEventListener("click", function (e) { e.stopPropagation(); openSheet(p); });
+      hud.appendChild(el);
+    });
+  }
+
+  function bearingWord(b) {
+    var names = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+    return names[Math.round((((b % 360) + 360) % 360) / 22.5) % 16];
+  }
+
+  // ---- map mode ----
+  function drawMap() {
+    var cx = 165, cy = 165, Rpx = 128, maxKm = 100;
+    var parts = [];
+    // rings
+    [25, 50, 100].forEach(function (k) {
+      var r = k / maxKm * Rpx;
+      parts.push('<circle class="ring" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>');
+      parts.push('<text class="ring-lbl" x="' + cx + '" y="' + (cy - r + 11) + '" text-anchor="middle">' + k + ' km</text>');
+    });
+    // FOV wedge (north up: angle measured from up, clockwise)
+    var a1 = (state.heading - HFOV / 2 - 90) * Math.PI / 180;
+    var a2 = (state.heading + HFOV / 2 - 90) * Math.PI / 180;
+    parts.push('<path class="wedge" d="M' + cx + ' ' + cy +
+      ' L' + (cx + Rpx * Math.cos(a1)) + ' ' + (cy + Rpx * Math.sin(a1)) +
+      ' A' + Rpx + ' ' + Rpx + ' 0 0 1 ' + (cx + Rpx * Math.cos(a2)) + ' ' + (cy + Rpx * Math.sin(a2)) + ' Z"/>');
+    // heading needle
+    var ah = (state.heading - 90) * Math.PI / 180;
+    parts.push('<line class="needle" x1="' + cx + '" y1="' + cy + '" x2="' + (cx + Rpx * Math.cos(ah)) + '" y2="' + (cy + Rpx * Math.sin(ah)) + '"/>');
+    // cardinals
+    parts.push('<text class="card" x="' + cx + '" y="' + (cy - Rpx - 8) + '" text-anchor="middle">N</text>');
+    parts.push('<text class="card" x="' + cx + '" y="' + (cy + Rpx + 16) + '" text-anchor="middle">S</text>');
+    parts.push('<text class="card" x="' + (cx + Rpx + 12) + '" y="' + (cy + 4) + '" text-anchor="middle">E</text>');
+    parts.push('<text class="card" x="' + (cx - Rpx - 12) + '" y="' + (cy + 4) + '" text-anchor="middle">W</text>');
+    // me
+    parts.push('<circle class="me" cx="' + cx + '" cy="' + cy + '" r="4"/>');
+    // peaks
+    PEAKS.forEach(function (p, i) {
+      var r = Math.min(p.km, maxKm) / maxKm * Rpx;
+      var ang = (p.brg - 90) * Math.PI / 180;
+      var px = cx + r * Math.cos(ang), py = cy + r * Math.sin(ang);
+      var sel = state.sel === p ? " sel" : "";
+      parts.push('<circle class="dot' + sel + '" data-i="' + i + '" cx="' + px + '" cy="' + py + '" r="4.5"/>');
+      if (p.km < 35 || sel) {
+        parts.push('<text class="dot-lbl" x="' + (px + 7) + '" y="' + (py + 3) + '">' + p.name.split(" (")[0] + '</text>');
+      }
+    });
+    mapSvg.innerHTML = parts.join("");
+    Array.prototype.slice.call(mapSvg.querySelectorAll(".dot")).forEach(function (d) {
+      d.addEventListener("click", function () { openSheet(PEAKS[+d.getAttribute("data-i")]); });
+    });
+  }
+
+  // ---- detail sheet ----
+  var sheet = document.getElementById("sheet");
+  function openSheet(p) {
+    state.sel = p;
+    document.getElementById("sName").textContent = p.name;
+    document.getElementById("sSub").textContent = "OpenStreetMap · osm:node · prominence " + p.prom.toLocaleString("en-IN") + " m";
+    document.getElementById("sFt").textContent = Math.round(p.m * 3.28084).toLocaleString("en-IN");
+    document.getElementById("sM").textContent = p.m.toLocaleString("en-IN");
+    var st = document.getElementById("sStats");
+    st.innerHTML =
+      '<span>' + (p.km < 20 ? p.km.toFixed(1) : Math.round(p.km)) + ' km away</span>' +
+      '<span>bearing ' + Math.round(p.brg) + '° ' + bearingWord(p.brg) + '</span>' +
+      '<span>elev. angle ' + p.el.toFixed(1) + '°</span>' +
+      '<span class="warn">line of sight not checked</span>';
+    sheet.classList.add("show");
+    if (state.mode === "map") drawMap();
+  }
+  document.getElementById("sheetClose").addEventListener("click", function () {
+    sheet.classList.remove("show"); state.sel = null; if (state.mode === "map") drawMap();
+  });
+  screenEl.addEventListener("click", function (e) {
+    if (state.mode === "ar" && !e.target.closest(".peak-label") && !e.target.closest(".sheet") &&
+        !e.target.closest(".modes") && !e.target.closest(".chip") && !e.target.closest(".botnav")) {
+      sheet.classList.remove("show");
+    }
+  });
+
+  // ---- drag to pan ----
+  var drag = null;
+  function down(e) {
+    var pt = e.touches ? e.touches[0] : e;
+    drag = { x: pt.clientX, y: pt.clientY, h: state.heading, p: state.pitch };
+    dragHint.style.opacity = "0";
+  }
+  function move(e) {
+    if (!drag) return;
+    var pt = e.touches ? e.touches[0] : e;
+    var dx = pt.clientX - drag.x, dy = pt.clientY - drag.y;
+    state.heading = (drag.h - dx / (W / HFOV) + 360) % 360;
+    state.pitch = Math.max(-14, Math.min(24, drag.p + dy / ppdV()));
+    render();
+    if (e.cancelable) e.preventDefault();
+  }
+  function up() { drag = null; }
+  view.addEventListener("mousedown", down);
+  mapView.addEventListener("mousedown", down);
+  window.addEventListener("mousemove", move);
+  window.addEventListener("mouseup", up);
+  view.addEventListener("touchstart", down, { passive: true });
+  mapView.addEventListener("touchstart", down, { passive: true });
+  window.addEventListener("touchmove", move, { passive: false });
+  window.addEventListener("touchend", up);
+
+  // ---- mode toggle ----
+  Array.prototype.slice.call(document.querySelectorAll(".modes button")).forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.mode = b.getAttribute("data-mode");
+      document.querySelectorAll(".modes button").forEach(function (x) { x.classList.toggle("on", x === b); });
+      mapView.classList.toggle("show", state.mode === "map");
+      var isMap = state.mode === "map";
+      document.querySelector(".compass-strip").style.display = isMap ? "none" : "";
+      document.getElementById("readout").style.display = isMap ? "none" : "";
+      document.querySelector(".reticle").style.display = isMap ? "none" : "";
+      leaders.style.display = isMap ? "none" : "";
+      Array.prototype.slice.call(hud.querySelectorAll(".peak-label")).forEach(function (n) { if (isMap) n.remove(); });
+      render();
+    });
+  });
+
+  // ---- sensor chip / calibration ----
+  var calib = document.getElementById("calib");
+  var sensorChip = document.getElementById("sensorChip");
+  function setSensor(low) {
+    state.calibrated = !low;
+    document.getElementById("sensorLed").classList.toggle("amber", low);
+    document.getElementById("sensorTxt").textContent = low ? "Compass low — calibrate" : "Compass ±3°";
+    sensorChip.classList.toggle("warn", low);
+  }
+  sensorChip.addEventListener("click", function () {
+    if (state.calibrated) { setSensor(true); return; }
+    calib.classList.add("show");
+    var hint = document.getElementById("calibHint");
+    var msgs = ["Reading the magnetometer…", "Rotating field detected…", "Almost there…", "Calibrated — ±2°"];
+    var i = 0;
+    hint.textContent = msgs[0];
+    var iv = setInterval(function () {
+      i++; if (i < msgs.length) hint.textContent = msgs[i];
+      if (i >= msgs.length - 1) clearInterval(iv);
+    }, 700);
+  });
+  document.getElementById("calibDone").addEventListener("click", function () {
+    calib.classList.remove("show"); setSensor(false);
+  });
+
+  window.addEventListener("resize", resize);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+  resize();
+  setTimeout(function () { dragHint.style.opacity = "0"; }, 4200);
+})();
+</script>
