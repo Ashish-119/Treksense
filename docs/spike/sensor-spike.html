@@ -218,8 +218,9 @@
   /* ---------------- state ---------------- */
   var S = {
     rawHeading: null, headingSource: "none", sawAbsolute: false, lastAbsoluteAt: 0,
-    smoothed: null, pitch: 0, roll: 0, gyroRate: null, lastOrientAt: 0, evTimes: [],
+    smoothed: null, pitch: 0, roll: 0, gyroRate: null, compassAcc: null, lastOrientAt: 0, evTimes: [],
     pos: null, posAgeStart: 0, camInfo: null, screenAngle: 0,
+    assumeTouched: false, assumeAutoSet: false,
     checks: [], jitter: null, startedAt: Date.now()
   };
   var DECL_METHOD = "regional-constant-2026 (coarse; replace with WMM in Stage 3)";
@@ -308,7 +309,12 @@
     if (typeof e.webkitCompassHeading === "number" && !isNaN(e.webkitCompassHeading)) {
       h = e.webkitCompassHeading;                 // iOS: degrees clockwise from TRUE north
       src = "ios:webkitCompassHeading (true)";
+      if (typeof e.webkitCompassAccuracy === "number") S.compassAcc = e.webkitCompassAccuracy;
       S.sawAbsolute = true; S.lastAbsoluteAt = now;
+      if (!S.assumeTouched && !S.assumeAutoSet) {   // iOS already gives true north
+        S.assumeAutoSet = true; $("assume").value = "tru";
+        toast("iOS reports TRUE heading — declination not applied");
+      }
     } else if (isAbs && typeof e.alpha === "number") {
       h = norm360(360 - e.alpha);                 // W3C absolute: alpha CCW from north
       src = "w3c:absolute alpha";
@@ -434,14 +440,17 @@
   function renderLive(raw, sm, trueHdg, decl, hFOV) {
     var p = S.pos;
     var lagNote = $("smooth").value === "none" ? "—" : (Math.abs(norm180((sm || 0) - (raw || 0))).toFixed(1) + "° behind raw");
+    var hdgFrame = /true/.test(S.headingSource) ? "true frame" : "mag frame";
+    var applied = $("assume").value === "mag";
     var html =
-      row("raw heading (mag frame)", raw == null ? "—" : raw.toFixed(1) + "°", raw == null ? "no" : "") +
+      row("raw heading (" + hdgFrame + ")", raw == null ? "—" : raw.toFixed(1) + "°", raw == null ? "no" : "") +
       row("smoothed", sm == null ? "—" : sm.toFixed(1) + "°") +
       row("smoothing lag", lagNote) +
       row("event rate", hzRate().toFixed(0) + " Hz", hzRate() < 8 ? "warn" : "ok") +
       row("source", S.headingSource, /true/.test(S.headingSource) ? "ok" : /RELATIVE/.test(S.headingSource) ? "no" : "warn") +
+      row("iOS compass accuracy", S.compassAcc == null ? "—" : (S.compassAcc < 0 ? "invalid — calibrate" : "±" + S.compassAcc.toFixed(0) + "°"), S.compassAcc == null ? "" : (S.compassAcc < 0 || S.compassAcc > 15 ? "warn" : "ok")) +
       row("absolute seen", S.sawAbsolute ? "yes" : "NO", S.sawAbsolute ? "ok" : "no") +
-      row("declination used", decl.toFixed(2) + "° E · " + DECL_METHOD.split(" ")[0]) +
+      row("declination", decl.toFixed(2) + "° E · " + (applied ? "applied" : "NOT applied (heading already true)"), applied ? "" : "ok") +
       row("pitch (look angle)", S.pitch.toFixed(1) + "°") +
       row("roll", S.roll.toFixed(1) + "°") +
       row("gyro rate z", S.gyroRate == null ? "— (no devicemotion)" : S.gyroRate.toFixed(1) + " °/s", S.gyroRate == null ? "warn" : "") +
@@ -466,37 +475,65 @@
     arr.forEach(function (h) { s += Math.sin(h * Math.PI / 180); c += Math.cos(h * Math.PI / 180); });
     return norm360(Math.atan2(s, c) * 180 / Math.PI);
   }
+  var SETTLE_MS = 3000;   // ignore the first 3 s — sensor + hand settling
   function finishJitter() {
     var J = S.jitter; J.done = true;
-    var hs = J.samples.map(function (x) { return x.h; });
     $("jitBtn").disabled = false;
-    if (hs.length < 10) { $("jitOut").textContent = "too few samples (" + hs.length + ") — sensor not delivering data"; return; }
+    var all = J.samples.filter(function (x) { return x.h != null; });
+    if (all.length < 10) { $("jitOut").textContent = "too few samples (" + all.length + ") — sensor not delivering data"; return; }
+
+    var settled = all.filter(function (x) { return x.t - J.t0 >= SETTLE_MS; });
+    var trimmed = settled.length >= 20;
+    var use = trimmed ? settled : all;
+    var hs = use.map(function (x) { return x.h; });
+
     var mean = circMean(hs);
     var dev = hs.map(function (h) { return norm180(h - mean); });
     var sd = Math.sqrt(dev.reduce(function (a, b) { return a + b * b; }, 0) / dev.length);
     var p2p = Math.max.apply(null, dev) - Math.min.apply(null, dev);
-    var rate = hs.length / 30;
-    var verdict = p2p < 3 ? "EMA (α≈0.15–0.2) is enough"
-      : p2p < 8 ? "Complementary filter recommended (gyro + mag)"
-      : "Complementary filter + user drag-to-align both required";
-    J.stats = { n: hs.length, rateHz: +rate.toFixed(1), meanDeg: +mean.toFixed(1), sdDeg: +sd.toFixed(2), p2pDeg: +p2p.toFixed(2), verdict: verdict };
-    $("jitOut").innerHTML = "samples " + hs.length + " @ " + rate.toFixed(1) + " Hz\n" +
-      "mean " + mean.toFixed(1) + "°   σ " + sd.toFixed(2) + "°   peak-to-peak " + p2p.toFixed(2) + "°\n" +
+    var rate = all.length / 30;
+
+    // startup transient, measured against the settled mean
+    var startDev = all.filter(function (x) { return x.t - J.t0 < SETTLE_MS; })
+                      .map(function (x) { return Math.abs(norm180(x.h - mean)); });
+    var startMax = startDev.length ? Math.max.apply(null, startDev) : 0;
+
+    // verdict weighs steady-state σ first, worst settled excursion second
+    var verdict = (sd <= 1.0 && p2p <= 4)
+        ? "EMA α≈0.15–0.2 is enough — heading is very stable"
+      : (sd <= 2.5)
+        ? "EMA (heavier, α≈0.1) or a complementary filter"
+        : "Complementary filter + user drag-to-align both needed";
+
+    J.stats = {
+      samplesTotal: all.length, samplesUsed: hs.length, settleTrimmedMs: trimmed ? SETTLE_MS : 0,
+      rateHz: +rate.toFixed(1), meanDeg: +mean.toFixed(1),
+      steadySigmaDeg: +sd.toFixed(2), steadyPeakToPeakDeg: +p2p.toFixed(2),
+      startupTransientDeg: +startMax.toFixed(2), verdict: verdict
+    };
+    $("jitOut").innerHTML =
+      all.length + " samples @ " + rate.toFixed(1) + " Hz" + (trimmed ? "  ·  first 3 s trimmed" : "") + "\n" +
+      "steady-state:  σ " + sd.toFixed(2) + "°   peak-to-peak " + p2p.toFixed(2) + "°\n" +
+      "startup transient (ignored): " + startMax.toFixed(1) + "°\n" +
       '<span id="jitVerdict">→ ' + verdict + "</span>";
-    drawSpark(dev);
+    drawSpark(all.map(function (x) { return norm180(x.h - mean); }), trimmed ? (SETTLE_MS / 30000) : 0);
   }
-  function drawSpark(dev) {
+  function drawSpark(dev, trimFrac) {
     var cv = $("spark"), x = cv.getContext("2d"); cv.width = cv.clientWidth * 2; cv.height = 80;
     x.clearRect(0, 0, cv.width, cv.height);
     var mx = Math.max(3, Math.max.apply(null, dev.map(Math.abs)));
     x.strokeStyle = "#3a444f"; x.beginPath(); x.moveTo(0, 40); x.lineTo(cv.width, 40); x.stroke();
+    if (trimFrac > 0) {
+      x.fillStyle = "rgba(224,145,63,0.12)"; x.fillRect(0, 0, trimFrac * cv.width, cv.height);
+      x.strokeStyle = "#e0913f66"; x.beginPath(); x.moveTo(trimFrac * cv.width, 0); x.lineTo(trimFrac * cv.width, cv.height); x.stroke();
+    }
     x.strokeStyle = "#e0913f"; x.beginPath();
     dev.forEach(function (d, i) {
       var px = i / (dev.length - 1) * cv.width, py = 40 - d / mx * 34;
       i ? x.lineTo(px, py) : x.moveTo(px, py);
     });
     x.stroke();
-    x.fillStyle = "#8b939d"; x.font = "18px monospace"; x.fillText("±" + mx.toFixed(1) + "°", 6, 16);
+    x.fillStyle = "#8b939d"; x.font = "18px monospace"; x.fillText("±" + mx.toFixed(1) + "°  (shaded = ignored)", 6, 16);
   }
 
   /* ---------------- known-bearing check ---------------- */
@@ -510,15 +547,18 @@
     var errIfMag = norm180(raw + decl - actual);
     var rec = { ts: new Date().toISOString(), actualTrue: actual, rawHeading: +raw.toFixed(1),
       declination: +decl.toFixed(2), errorIfRawIsTrue: +errIfTrue.toFixed(1), errorIfRawIsMagnetic: +errIfMag.toFixed(1),
+      pitchAtLog: +S.pitch.toFixed(0), rollAtLog: +S.roll.toFixed(0),
       source: S.headingSource, pos: S.pos && !S.pos.error ? [ +S.pos.lat.toFixed(5), +S.pos.lon.toFixed(5) ] : null };
     S.checks.push(rec);
+    var tilted = Math.abs(S.pitch) > 20 || Math.abs(S.roll) > 20;
     var best = Math.abs(errIfTrue) <= Math.abs(errIfMag) ? "raw≈TRUE (err " + errIfTrue.toFixed(1) + "°)" : "raw≈MAGNETIC (err " + errIfMag.toFixed(1) + "°)";
     var lines = S.checks.slice(-5).map(function (c, i) {
       return "#" + (S.checks.length - Math.min(5, S.checks.length) + i + 1) + "  target " + c.actualTrue +
         "°  raw " + c.rawHeading + "°  →true " + c.errorIfRawIsTrue + "°  →mag " + c.errorIfRawIsMagnetic + "°";
     });
-    $("checkOut").textContent = lines.join("\n") + "\n\nlatest: " + best;
-    toast("logged check #" + S.checks.length);
+    $("checkOut").textContent = lines.join("\n") + "\n\nlatest: " + best +
+      (tilted ? "\n⚠ phone tilted " + Math.round(S.pitch) + "°/" + Math.round(S.roll) + "° — hold level" : "");
+    toast(tilted ? "logged #" + S.checks.length + " — hold phone level next time" : "logged check #" + S.checks.length);
   });
 
   /* ---------------- export ---------------- */
@@ -530,9 +570,12 @@
       preflight: { secureContext: isSecure, cameraApi: hasCam, deviceOrientationApi: hasDO, iosPermissionGesture: iosPerm, geolocationApi: hasGeo },
       detected: {
         headingSource: S.headingSource, sawAbsoluteEvent: S.sawAbsolute,
+        iosCompassAccuracyDeg: S.compassAcc,
+        headingFrame: /true/.test(S.headingSource) ? "true" : "magnetic-or-unknown",
         eventRateHz: +hzRate().toFixed(1), gyroAvailable: S.gyroRate != null,
         camera: S.camInfo, gps: S.pos, declinationMethod: DECL_METHOD
       },
+      headingAssumption: $("assume").value,
       smoothing: { mode: $("smooth").value, alpha: parseFloat($("alpha").value) },
       jitterTest: S.jitter && S.jitter.stats ? S.jitter.stats : "not run",
       knownBearingChecks: S.checks,
@@ -554,6 +597,7 @@
   });
 
   /* ---------------- misc ---------------- */
+  $("assume").addEventListener("change", function () { S.assumeTouched = true; });
   $("alpha").addEventListener("input", function () { $("alphaV").textContent = (+this.value).toFixed(2); });
   $("grab").addEventListener("click", function () { $("sheet").classList.toggle("min"); });
   var toastT;

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<title>Peak Finder · Stage 0</title>
+<style>
+  :root { --bg:#0d1116; --panel:#161c23; --line:#2a323c; --ink:#e9eae5; --dim:#8b939d; --accent:#e0913f;
+          --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--mono); line-height:1.55;
+         min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { width:100%; max-width:440px; }
+  .eyebrow { font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  h1 { font-size:20px; letter-spacing:.01em; margin-bottom:8px; }
+  p { color:var(--dim); font-size:13px; margin-bottom:22px; max-width:40ch; }
+  a.link { display:flex; flex-direction:column; gap:3px; text-decoration:none; color:var(--ink);
+           border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:12px;
+           background:var(--panel); }
+  a.link:hover, a.link:focus-visible { border-color:var(--accent); outline:none; }
+  a.link b { font-size:15px; font-weight:600; }
+  a.link span { font-size:11.5px; color:var(--dim); }
+  a.link .arrow { color:var(--accent); }
+  .foot { margin-top:18px; font-size:11px; color:var(--dim); }
+  .foot code { color:var(--ink); background:#0000; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <p class="eyebrow">TrekSense · Peak Finder</p>
+    <h1>Stage 0 — sensor spike</h1>
+    <p>Open on the phone you're testing. Grant Motion, Camera and Location when asked.</p>
+
+    <a class="link" href="sensor-spike.html">
+      <b>Sensor spike <span class="arrow">→</span></b>
+      <span>camera + compass + GPS probe, jitter test, bearing check</span>
+    </a>
+    <a class="link" href="stage-0-runbook.html">
+      <b>Field runbook <span class="arrow">→</span></b>
+      <span>the 7-task checklist, step by step</span>
+    </a>
+
+    <div class="foot">
+      Bookmark this page: <code>ashish-119.github.io/Treksense/docs/spike/</code>
+    </div>
+  </div>
+</body>
+</html>

@@ -122,27 +122,32 @@ Tap **"Copy JSON"** (or "Download JSON") on each device. Paste each blob into th
 ## Part C — Decisions to record (after measuring)
 
 ### D‑0.1 · Smoothing approach *(task 0‑4)*
-> Filled after Step 4c/4e on all devices.
+> Filled after Step 4c/4e on all devices. **Driven by the worst device — Android not yet tested.**
 
-- Worst‑case peak‑to‑peak jitter observed: **___°** on **___**
+- iPhone 17 (indoor): steady‑state σ ≈ 0.6° → light EMA is plenty on iOS.
+- Worst‑case peak‑to‑peak jitter observed: **___°** on **___** *(pending Android)*
 - Chosen filter: **☐ EMA (α ___)  ☐ Complementary  ☐ Complementary + drag‑to‑align**
 - Rationale:
+- *Leaning:* per‑platform — **EMA α≈0.18 on iOS** (heading is pre‑fused by iOS), decide
+  Android after testing; keep `webkitCompassAccuracy` / an Android equivalent as a
+  "recalibrate" trigger.
 
 ### D‑0.2 · Declination source *(task 0‑5)*
 
 - Source: **WMM2025 `.COF`** (NOAA NCEI, public domain)
 - File size: **___ KB**  ·  evaluator est. **~6 KB** → total **___ KB** ( < 50 KB ✅ / ❌ )
-- Does any tested phone already report **true** heading (so declination is only needed on the others)? **___**
+- Does any tested phone already report **true** heading? → **iPhone 17: YES** (`webkitCompassHeading`
+  is true north). So declination is an **Android‑only** correction. Confirm on the Android device.
 
 ### D‑0.3 · Default assumed hFOV per platform
 > Camera FOV is almost never exposed (`camera FOV exposed: no`). Stage 3 adds a
 > calibration flow; pick a starting default now.
 
-- iOS default hFOV: **___°**   ·   Android default hFOV: **___°**
+- iOS default hFOV: **___°** *(iPhone 17, 1280×720 `environment` stream — needs calibration in Stage 3)*   ·   Android default hFOV: **___°**
 
 ### D‑0.4 · Target test devices for the rest of the build
 
-- Primary iOS: **___**   ·   Primary Android: **___**   ·   Low‑end check: **___**
+- Primary iOS: **iPhone 17** ✅   ·   Primary Android: **___**   ·   Low‑end check: **___**
 
 ---
 
@@ -164,18 +169,58 @@ When every box is ticked, Stage 1 (backend + data layer) can start.
 
 ## Results log
 
-### Device 1 — <model / OS>
+### Device 1 — iPhone 17, iOS Safari  ·  **indoor test 2026‑09‑11 (Delhi, 28.563 / 77.195)**
+
+Read from screenshots (JSON export pending — re‑run and Copy JSON after the spike update):
+
+| Row | Value | Verdict |
+|---|---|---|
+| source | `ios:webkitCompassHeading (true)` | ✅ true north, declination **not needed** on this device |
+| absolute seen | yes | ✅ |
+| event rate | 60 Hz | ✅ |
+| gyro rate z | present (±1 °/s) | ✅ `devicemotion` available |
+| screen angle | 0° (portrait) | ✅ |
+| gps accuracy | 9 m (indoors) | ✅ |
+| gps altitude | 244 m ±30 | ✅ **provided** (blueprint expected possible null — iPhone gives it, ±30 m coarse) |
+| camera | 1280×720 environment | ✅ |
+| camera FOV exposed | no | expected → Stage 3 calibration |
+
+**Jitter (Test 3, indoor, on desk near metal furniture):**
+`1801 samples @ 60 Hz` · mean 92.5° · **σ 0.56°** · peak‑to‑peak 6.22° · sparkline shows the
+excursion is a **startup transient**, then flat. → Real read: **iPhone 17 compass is very
+stable; the 6.22° was settling, not steady‑state noise.** (Spike updated 2026‑09‑11 to trim
+the first 3 s and weight σ — re‑run to get the corrected number.)
+
+**Drift 60 s:** not done — do outdoors.
+**Known‑bearing:** not done — do outdoors (the important one).
+**Subjective tracking:** phone was held tilted (pitch −36° / roll −25°); hold roughly level for bearing work.
+
+> ⚠ **Setting to fix:** the spike's *"heading is"* was on **"magnetic → add declination"**, so it
+> was adding a spurious +0.67°. On iOS it should be **"already true north"**. The spike update
+> now auto‑selects that when it sees `webkitCompassHeading`.
+
 ```json
-(paste Copy JSON output here)
+(paste Copy JSON here after re-running the updated spike)
 ```
-Drift 60 s: ___   ·   Known‑bearing errors: ___   ·   Subjective tracking: ___
 
-### Device 2 — <model / OS>
+### Device 2 — Android (model / OS: ___)  ·  not yet tested
 ```json
 
 ```
 
-### Device 3 — <model / OS>
+### Device 3 — low-end Android (model / OS: ___)  ·  not yet tested
 ```json
 
 ```
+
+---
+
+## Interim conclusions after Device 1 (iPhone 17)
+
+- **API audit: iPhone 17 passes cleanly.** All sensors present, 60 Hz, GPS altitude provided.
+- **Heading frame: iOS = TRUE north** (`webkitCompassHeading`). Declination correction is an
+  **Android-only** concern → simplifies Stage 3 for iOS.
+- **Jitter: iOS is not the constraint** for D‑0.1. σ ≈ 0.6° → light EMA is fine on iOS.
+  The smoothing decision will be driven by the **worst Android** device — still to test.
+- **Still blocking Stage 0 exit:** outdoor drift watch, outdoor known‑bearing check (both
+  devices), Android testing, `WMM.COF` download.
