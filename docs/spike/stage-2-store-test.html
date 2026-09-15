@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Peak Finder — Stage 2 Store Test</title>
+<style>
+  :root { --bg:#0d1116; --panel:#161c23; --panel2:#1b222b; --line:#2a323c; --ink:#e9eae5; --dim:#8b939d;
+          --accent:#e0913f; --good:#57c98a; --bad:#e0715a; --warn:#e6a94b;
+          --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--mono); line-height:1.55;
+         font-size:13px; padding:20px 16px 60px; max-width:640px; margin:0 auto; }
+  h1 { font-size:17px; margin-bottom:4px; }
+  .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  p.lede { color:var(--dim); font-size:12.5px; margin-bottom:18px; max-width:56ch; }
+  section { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; background:var(--panel); }
+  h2 { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); margin-bottom:10px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  label { font-size:11.5px; color:var(--dim); }
+  input, select { background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:6px;
+      padding:7px 9px; font:inherit; font-size:12.5px; }
+  input[type=number] { width:100px; }
+  button { background:var(--accent); color:#111; border:0; border-radius:8px; font:inherit; font-weight:700;
+      padding:9px 16px; cursor:pointer; font-size:12.5px; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:400; }
+  button:disabled { opacity:.45; cursor:default; }
+  .rows > div { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:12px; }
+  .rows > div:first-child { border-top:0; }
+  .rows .k { color:var(--dim); } .rows .v.ok{color:var(--good);} .rows .v.bad{color:var(--bad);} .rows .v.warn{color:var(--warn);}
+  #log { font-size:11.5px; color:var(--dim); white-space:pre-wrap; max-height:180px; overflow-y:auto;
+         background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-top:8px; }
+  .bar { height:6px; background:var(--panel2); border:1px solid var(--line); border-radius:3px; overflow:hidden; margin-top:8px; }
+  .bar > i { display:block; height:100%; background:var(--accent); width:0%; transition:width .2s; }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px; }
+  th, td { text-align:left; padding:5px 6px; border-top:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .tag { padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; }
+  .tag.prepared { background:#1c3b2c; color:var(--good); } .tag.stale{background:#3a2820;color:var(--warn);} .tag.fetching{background:#233044;color:#7fb2e6;}
+  .steps { list-style:none; counter-reset:s; }
+  .steps li { counter-increment:s; padding:5px 0 5px 24px; position:relative; font-size:12.5px; }
+  .steps li::before { content: counter(s); position:absolute; left:0; top:5px; width:16px; height:16px; border:1px solid var(--line);
+      border-radius:50%; font-size:10px; display:flex; align-items:center; justify-content:center; color:var(--dim); }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+  <p class="eyebrow">TrekSense · Peak Finder · Stage 2</p>
+  <h1>On-device store test</h1>
+  <p class="lede">Exercises <span style="color:var(--ink)">js/peakstore.js</span> (IndexedDB: peaks / tiles / prep)
+    and <span style="color:var(--ink)">sw.js</span> against the live <span style="color:var(--ink)">/api/peaks</span>.
+    Prepare an area, then follow the offline test at the bottom to check the Stage 2 DoD.</p>
+
+  <section>
+    <h2>Service worker &amp; storage</h2>
+    <div class="rows" id="swRows"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="ghost" id="persistBtn">Request persistent storage</button>
+      <button class="ghost" id="usageBtn">Check usage</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Prepare an area</h2>
+    <div class="row">
+      <label>lat</label><input type="number" id="lat" step="0.001" value="31.05" />
+      <label>lon</label><input type="number" id="lon" step="0.001" value="78.28" />
+      <button class="ghost" id="geoBtn">Use my location</button>
+    </div>
+    <div class="row">
+      <label>radius km</label>
+      <select id="radius">
+        <option value="25" selected>25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+      <button id="prepBtn">Prepare this area</button>
+      <button class="ghost" id="clearBtn">Clear all data</button>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div id="log">idle</div>
+  </section>
+
+  <section>
+    <h2>Prep status</h2>
+    <div class="rows" id="prepRows"></div>
+  </section>
+
+  <section>
+    <h2>Tiles in store</h2>
+    <table id="tilesTable"><thead><tr><th>tileKey</th><th>status</th><th>peaks</th><th>age</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Query — <span id="qcount">0</span> peaks in range (no network)</h2>
+    <button class="ghost" id="queryBtn">Run peaksForBox()</button>
+    <table id="peaksTable"><thead><tr><th>name</th><th>elev</th><th>tile</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2>Offline test — the Stage 2 definition of done</h2>
+    <ol class="steps">
+      <li>Prepare an area above while <strong>online</strong>. Wait for "done" in the log.</li>
+      <li>Turn on <strong>Airplane Mode</strong> (or DevTools → Network → Offline).</li>
+      <li><strong>Hard-reload</strong> this page (the service worker should serve it from cache).</li>
+      <li>Tap <strong>"Run peaksForBox()"</strong> again — it should return the same peak count with
+        zero network requests (check DevTools → Network: nothing to <span style="color:var(--ink)">/api/peaks</span>).</li>
+    </ol>
+    <p style="color:var(--dim);margin-top:8px">Pass = peaks still list, prep status still shows the
+      prepared centre and its age. That's the whole DoD: <em>prepare online, go dark, still works.</em></p>
+  </section>
+
+  <script src="../../js/tiles.js"></script>
+  <script src="../../js/peakstore.js"></script>
+  <script src="stage-2-store-test.js"></script>
+</body>
+</html>
