@@ -20,6 +20,7 @@
 | ❤️ Saved treks | Heart any trek; shortlist lives in the Saved tab (localStorage) |
 | 🌙 Dark mode | Toggle in the header; respects system preference |
 | 🛟 Safety & AMS | Altitude-sickness rules on every trek page |
+| 🚧 Peak Finder *(in development)* | AR camera peak identifier — point your phone at the skyline, see named Himalayan peaks with elevation, distance and bearing, sourced from an offline-first on-device store. Backend live; camera/AR UI not yet built. See [`docs/BUILD-LOG.md`](docs/BUILD-LOG.md) |
 
 ## 📱 Responsive design
 
@@ -29,16 +30,20 @@
 
 ## 🚀 Run it
 
-No build step, no dependencies. Either:
+The site itself is a plain static bundle — no build step. The one server-side piece
+is the Peak Finder backend (`api/peaks.js`), a Vercel serverless function.
 
 ```bash
-# open directly
-open index.html
-
-# or serve locally (recommended for live weather)
+# static pages only
 python3 -m http.server 8000
-# → http://localhost:8000
+
+# static pages + a local emulation of /api/peaks (no Vercel account needed)
+python3 scripts/dev-server.py 8000
+# → http://localhost:8000/api/peaks?bbox=30.5,79.0,31.0,79.5
 ```
+
+Deploy: connect the repo to **Vercel** (zero-config — `vercel.json` sets the function
+timeout). GitHub Pages still serves every static page; only `/api/peaks` needs Vercel.
 
 ## 🗂️ Structure
 
@@ -46,6 +51,12 @@ python3 -m http.server 8000
 TrekSense/
 ├── index.html      # Explore + Saved views
 ├── trek.html       # Trek detail page (?id=kedarkantha …)
+├── vercel.json      # Peak Finder backend function config
+├── api/
+│   ├── peaks.js              # GET /api/peaks?bbox= — OpenStreetMap (Overpass) proxy
+│   └── _fallback-peaks.json  # ~130-peak offline set, served when the provider fails
+├── scripts/dev-server.py     # Local static server + /api/peaks emulator
+├── docs/                     # Peak Finder blueprint, UI preview, build log, Stage 0 spike
 ├── css/styles.css  # Design system, light/dark themes, responsive layout
 ├── images/         # Curated trek photographs (Wikimedia Commons)
 └── js/
@@ -55,6 +66,7 @@ TrekSense/
     ├── data3.js    # 65 more: Nepal, Kashmir, Sikkim, Darjeeling + deeper HP/UK
     ├── routesdata.js # Journey planner knowledge (cities, hubs, road approaches)
     ├── peaks.js    # 78-peak photo library for the Peaks Visible section
+    ├── tiles.js    # Peak Finder — frozen 0.5° tile grid, shared with api/peaks.js
     ├── shared.js   # Theme, saved-store, icons, SVG scene art + gallery variants
     ├── effects.js  # Motion layer (reveals, tilt, parallax, page transitions)
     ├── app.js      # Explore page logic
@@ -62,6 +74,16 @@ TrekSense/
 ```
 
 Card covers, heroes and galleries use real photographs from `images/`; if a photo is missing, the generated SVG mountain scene behind it shows automatically.
+
+### Peak Finder backend
+
+`api/peaks.js` proxies OpenStreetMap's Overpass API (`natural=peak`, no API key),
+filters non-mountain noise, and returns a frozen JSON schema documented in
+[`docs/PEAKS-API.md`](docs/PEAKS-API.md). It takes a bounding box snapped to the
+0.5° tile grid in `js/tiles.js` so repeat requests for an already-prepared area are
+edge-cached and cost nothing. On provider failure it degrades to the bundled
+`api/_fallback-peaks.json` set (`degraded: true`) rather than erroring. Full plan,
+progress and the interactive UI mockup: [`docs/BUILD-LOG.md`](docs/BUILD-LOG.md).
 
 ## 📷 Photo credits
 

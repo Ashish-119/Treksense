@@ -1,0 +1,448 @@
+<title>Reading the Spike</title>
+<meta name="description" content="Field glossary for the TrekSense Peak Finder sensor spike — what every readout means, its ideal value, and a symptom-to-cause triage table for outdoor testing." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --ground:#efeee7; --surface:#f8f7f2; --surface-2:#e9e7dd;
+    --ink:#1a1d20; --ink-soft:#3c4249; --muted:#6a727c;
+    --line:#d5d3c8; --line-soft:#e2e0d6;
+    --accent:#a85e14; --accent-bg:#f4e6d3;
+    --summit:#2f6b4e; --summit-bg:#dfeae2;
+    --alert:#b23c24; --alert-bg:#f1ddd6;
+    --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --f-body:"Source Serif 4",Georgia,serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+    --measure:66ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#10141a; --surface:#161b22; --surface-2:#1e242c;
+      --ink:#e7e8e3; --ink-soft:#c2c6c3; --muted:#8b949f;
+      --line:#2a323c; --line-soft:#232a33;
+      --accent:#e0913f; --accent-bg:#33261a;
+      --summit:#63ac85; --summit-bg:#1b2b23;
+      --alert:#e0715a; --alert-bg:#33211c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#10141a; --surface:#161b22; --surface-2:#1e242c;
+    --ink:#e7e8e3; --ink-soft:#c2c6c3; --muted:#8b949f;
+    --line:#2a323c; --line-soft:#232a33;
+    --accent:#e0913f; --accent-bg:#33261a;
+    --summit:#63ac85; --summit-bg:#1b2b23;
+    --alert:#e0715a; --alert-bg:#33211c;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--f-body); font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page { max-width:760px; margin:0 auto; padding:0 20px 90px; }
+
+  .mast { padding:36px 0 24px; border-bottom:2px solid var(--ink); }
+  .eyebrow {
+    font-family:var(--f-mono); font-size:11.5px; letter-spacing:0.2em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 14px;
+  }
+  h1 {
+    font-family:var(--f-display); font-weight:800; font-size:clamp(1.8rem,4.6vw,2.5rem);
+    line-height:1.08; letter-spacing:-0.02em; margin:0 0 12px; text-wrap:balance;
+  }
+  .mast p { max-width:var(--measure); color:var(--ink-soft); margin:0 0 8px; }
+  .mast .fine { font-family:var(--f-mono); font-size:12.5px; color:var(--muted); }
+
+  .jump { display:flex; flex-wrap:wrap; gap:6px 8px; margin-top:18px; }
+  .jump a {
+    font-family:var(--f-mono); font-size:11.5px; color:var(--ink-soft);
+    border:1px solid var(--line); padding:5px 10px; border-radius:14px; text-decoration:none;
+  }
+  .jump a:hover { border-color:var(--accent); color:var(--accent); }
+
+  section { padding:32px 0; border-bottom:1px solid var(--line-soft); scroll-margin-top:16px; }
+  section:last-child { border-bottom:0; }
+  .kicker {
+    font-family:var(--f-mono); font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 10px;
+  }
+  h2 {
+    font-family:var(--f-display); font-weight:700; font-size:clamp(1.3rem,3vw,1.7rem);
+    letter-spacing:-0.015em; margin:0 0 12px; text-wrap:balance;
+  }
+  h3 {
+    font-family:var(--f-mono); font-size:11px; font-weight:600; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--muted); margin:26px 0 8px;
+  }
+  p { max-width:var(--measure); margin:0 0 14px; }
+  code, .m {
+    font-family:var(--f-mono); font-size:0.84em; background:var(--surface);
+    border:1px solid var(--line-soft); border-radius:3px; padding:0.06em 0.34em;
+  }
+
+  .tw { overflow-x:auto; margin:14px 0; border:1px solid var(--line); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  th {
+    font-family:var(--f-mono); font-size:10px; font-weight:600; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--muted); background:var(--surface); border-bottom:1px solid var(--line);
+  }
+  tbody tr:last-child td { border-bottom:0; }
+  td b { font-family:var(--f-mono); font-size:12.5px; }
+
+  .glossary { margin:16px 0; max-width:var(--measure); }
+  .g-row { padding:16px 0; border-top:1px solid var(--line-soft); }
+  .g-row:first-child { border-top:0; padding-top:6px; }
+  .g-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:5px; }
+  .g-name { font-family:var(--f-mono); font-size:14.5px; font-weight:600; color:var(--ink); }
+  .g-def { font-size:15.5px; margin:4px 0 8px; }
+  .g-vals { display:flex; flex-direction:column; gap:4px; font-size:13.5px; }
+  .g-vals div { display:flex; gap:8px; }
+  .g-vals .tag {
+    font-family:var(--f-mono); font-size:9.5px; font-weight:700; letter-spacing:0.06em;
+    text-transform:uppercase; padding:2px 6px; border-radius:3px; flex:none; height:fit-content; margin-top:1px;
+  }
+  .tag.ideal { background:var(--summit-bg); color:var(--summit); }
+  .tag.watch { background:var(--accent-bg); color:var(--accent); }
+  .tag.bad { background:var(--alert-bg); color:var(--alert); }
+
+  .tri { background:var(--accent); color:#fff; font-family:var(--f-mono); font-size:9.5px; font-weight:700;
+         letter-spacing:0.08em; padding:2px 7px; border-radius:3px; }
+
+  .box {
+    border:1px solid var(--line); border-left:3px solid var(--summit); background:var(--summit-bg);
+    padding:12px 16px; margin:16px 0; max-width:var(--measure); font-size:15px;
+  }
+  .box .h {
+    font-family:var(--f-mono); font-size:10.5px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--muted); display:block; margin-bottom:5px;
+  }
+
+  .foot {
+    margin-top:30px; padding-top:18px; border-top:2px solid var(--ink);
+    font-family:var(--f-mono); font-size:12px; color:var(--muted); max-width:var(--measure);
+  }
+  a.link { color:var(--summit); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+</style>
+
+<div class="page">
+  <header class="mast">
+    <p class="eyebrow">TrekSense · Peak Finder · Stage 0</p>
+    <h1>Reading the spike</h1>
+    <p>Every number the sensor spike shows you, what it means, what "good" looks like outdoors,
+      and — first — a symptom‑to‑cause table for when something looks off in the field.</p>
+    <p class="fine">Companion to <span class="m">sensor-spike.html</span> and the
+      <span class="m">stage-0-runbook.html</span> checklist.</p>
+    <nav class="jump">
+      <a href="#triage">Quick triage</a>
+      <a href="#glance">At a glance</a>
+      <a href="#hud">Top‑of‑screen HUD</a>
+      <a href="#heading">Heading pipeline</a>
+      <a href="#tilt">Tilt &amp; motion</a>
+      <a href="#position">Position &amp; camera</a>
+      <a href="#jitter">Jitter test</a>
+      <a href="#bearing">Known‑bearing check</a>
+    </nav>
+  </header>
+
+  <!-- ============ TRIAGE ============ -->
+  <section id="triage">
+    <p class="kicker">Start here</p>
+    <h2>Something looks wrong — what is it?</h2>
+    <p>Match what you're seeing to a row. Read left to right: the symptom, the most likely
+      cause, and the fastest way to check or fix it.</p>
+
+    <div class="tw"><table>
+      <thead><tr><th>Symptom</th><th>Likely cause</th><th>Do this</th></tr></thead>
+      <tbody>
+        <tr><td>TARGET label never turns green, even aimed right (by a map/real compass)</td>
+            <td>wrong true/magnetic assumption, or a fixed offset from interference</td>
+            <td>Run 3–5 <a class="link" href="#bearing">known‑bearing checks</a>; if the winning hypothesis still errs by more than ~5°, you have local interference — move away from metal and retest</td></tr>
+        <tr><td>Label green, then creeps off target over a few seconds while the phone is still</td>
+            <td>high steady‑state jitter, or a moving magnetic source nearby</td>
+            <td>Check <span class="m">jitter σ</span> — if it's low (&lt;1°) but this still happens, look for someone/something with metal or another phone passing near you</td></tr>
+        <tr><td>Raw heading jumps tens of degrees in an instant</td>
+            <td>a momentary interference spike, or the source silently fell back from absolute to relative</td>
+            <td>Glance at <span class="m">source</span> and <span class="m">absolute seen</span> right when it happens</td></tr>
+        <tr><td>Standing in the same spot facing the same landmark gives a different raw heading than 10&nbsp;minutes ago</td>
+            <td>poor repeatability — hard/soft‑iron distortion where you're standing</td>
+            <td>Walk a few metres away from cars, railings, large metal structures, retest</td></tr>
+        <tr><td>Event rate drops well below normal mid‑session</td>
+            <td>OS throttling — low‑power mode, backgrounded tab, thermal throttling</td>
+            <td>Check the phone isn't in low‑power mode; keep the browser tab in front</td></tr>
+        <tr><td>iOS compass accuracy shows a negative number</td>
+            <td>magnetometer not calibrated</td>
+            <td>Wave the phone in a figure‑8 a few times, re‑check the row</td></tr>
+        <tr><td><span class="m">absolute seen</span> stays "NO" the whole session</td>
+            <td>this device/browser has never delivered a world‑anchored reading</td>
+            <td>Move to open ground away from all metal; every bearing on this device is meaningless until this flips to "yes"</td></tr>
+        <tr><td>TARGET label stutters / jumps between frames while panning smoothly</td>
+            <td>low event rate, or smoothing set too light for this device's jitter</td>
+            <td>Check <span class="m">event rate</span>; if it's healthy (≥20 Hz), raise the smoothing α or switch to Complementary</td></tr>
+        <tr><td>Gyro rate z always shows "—"</td>
+            <td>no <span class="m">devicemotion</span> support/permission on this device</td>
+            <td>Complementary filter isn't available here — EMA only for this device, note it for D‑0.1</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ AT A GLANCE ============ -->
+  <section id="glance">
+    <p class="kicker">Reference</p>
+    <h2>Numeric thresholds, at a glance</h2>
+    <div class="tw"><table>
+      <thead><tr><th>Metric</th><th>Good</th><th>Marginal</th><th>Bad</th></tr></thead>
+      <tbody>
+        <tr><td>Event rate</td><td>≥ 20 Hz</td><td>8–20 Hz</td><td>&lt; 8 Hz</td></tr>
+        <tr><td>Jitter σ (steady‑state)</td><td>&lt; 1°</td><td>1–2.5°</td><td>&gt; 2.5°</td></tr>
+        <tr><td>Jitter peak‑to‑peak (steady‑state)</td><td>&lt; 4°</td><td>4–8°</td><td>&gt; 8°</td></tr>
+        <tr><td>Known‑bearing error</td><td>&lt; 5° (the DoD line)</td><td>5–10°</td><td>&gt; 10°</td></tr>
+        <tr><td>GPS accuracy</td><td>&lt; 20 m</td><td>20–50 m</td><td>&gt; 50 m</td></tr>
+        <tr><td>iOS compass accuracy</td><td>≤ 10°</td><td>10–20°</td><td>&gt; 20° or negative</td></tr>
+        <tr><td>Smoothing lag after stopping</td><td>settles &lt; 1 s</td><td>1–3 s</td><td>&gt; 3 s</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ HUD ============ -->
+  <section id="hud">
+    <p class="kicker">The top of the screen</p>
+    <h2>What you see before opening the readout panel</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">Big heading readout</span> <span class="tri">e.g. "80° E true"</span></div>
+        <div class="g-def">The computed <em>true</em> heading: smoothed heading, plus declination
+          if the "heading is" selector says magnetic, or the smoothed value directly if it says
+          already‑true. Everything else on the page is measured against this number.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> matches a real compass/map within ±5°, updates smoothly, doesn't freeze</div>
+          <div><span class="tag bad">bad</span> frozen for several seconds while you're moving = sensor stopped delivering events</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">Source tag</span></div>
+        <div class="g-def">Which API actually supplied the last heading: iOS's true‑north compass
+          API, the W3C <em>absolute</em> orientation event (normally magnetic‑frame), or a plain
+          <em>relative</em> event with no world anchor at all.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> <span class="m">ios:webkitCompassHeading (true)</span> on iPhone · <span class="m">w3c:absolute alpha</span> on Android</div>
+          <div><span class="tag bad">bad</span> <span class="m">RELATIVE alpha (unreliable)</span> — heading is drifting from an arbitrary start point, not anchored to the real world</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">Compass tick‑strip</span></div>
+        <div class="g-def">A protractor centred on your current true heading. The cardinal
+          letters (N/E/S/W) should sit where those directions actually are.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> "N" tick roughly toward where you independently know north to be</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">TARGET label</span></div>
+        <div class="g-def">Marks the bearing you typed into "true bearing°", placed by
+          (target − true heading) ÷ hFOV. Turns green ("lock") within ±2° of centre.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> centres and locks green when you physically face that true bearing, verified against a map or real compass</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HEADING PIPELINE ============ -->
+  <section id="heading">
+    <p class="kicker">Readout panel · rows 1–8</p>
+    <h2>The heading pipeline</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">raw heading (mag / true frame)</span></div>
+        <div class="g-def">The newest heading value straight from the sensor event, before any
+          smoothing. The label switches between "mag frame" and "true frame" depending on the
+          detected source.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> changes smoothly and proportionally as you turn; returns to the <em>same</em> value when you return to the same physical direction</div>
+          <div><span class="tag bad">bad</span> different values each time you revisit the same direction — that's a repeatability failure, i.e. local interference</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">smoothed</span></div>
+        <div class="g-def">Raw heading passed through the selected filter (None / EMA / Complementary).</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> tracks raw closely but visibly steadier on the tick‑strip / label than raw would be</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">smoothing lag</span></div>
+        <div class="g-def">|smoothed − raw| right now — how far behind the filter currently sits.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> small (&lt; 2°) at rest; briefly larger the instant you start panning, then collapses within ~1 s of stopping</div>
+          <div><span class="tag watch">watch</span> stays &gt; 5–8° for several seconds after you stop — filter is too heavy (α too low) for this device</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">event rate</span></div>
+        <div class="g-def">Orientation events per second, measured over the last ~2 s.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> ≥ 20 Hz (most iPhones deliver 60 Hz)</div>
+          <div><span class="tag bad">bad</span> &lt; 8 Hz — the label will visibly stutter; note the device, it limits how much smoothing helps later</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">iOS compass accuracy</span></div>
+        <div class="g-def">Apple's own self‑reported uncertainty of the compass reading
+          (<span class="m">webkitCompassAccuracy</span>), in degrees. iOS only — blank elsewhere.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> a small number, roughly ≤ 10–15°</div>
+          <div><span class="tag bad">bad</span> negative = uncalibrated (do the figure‑8); &gt; 20° = iOS itself doesn't trust this reading</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">absolute seen</span></div>
+        <div class="g-def">Whether the browser has fired at least one world‑anchored orientation
+          event since the page loaded.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> yes</div>
+          <div><span class="tag bad">bad</span> NO — every heading shown this session on this device is relative‑frame guesswork; treat all bearings as meaningless until this flips</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">declination</span></div>
+        <div class="g-def">The correction added to a magnetic‑frame heading to reach true north
+          (Stage 0's coarse regional stand‑in for the real WMM). Shows whether it's currently
+          being applied.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> "NOT applied" when source already says <span class="m">(true)</span>; "applied" otherwise — confirmed correct by the known‑bearing check, not assumed</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TILT & MOTION ============ -->
+  <section id="tilt">
+    <p class="kicker">Readout panel · rows 9–11</p>
+    <h2>Tilt &amp; motion</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">pitch (look angle)</span></div>
+        <div class="g-def">How far up/down the phone is tilted from "looking at the horizon"
+          (0°), from <span class="m">beta − 90</span>.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> close to 0° while doing bearing checks — phone held up, roughly vertical, pointed at the horizon</div>
+          <div><span class="tag watch">watch</span> |pitch| &gt; 20° during a known‑bearing log — heading is still usable, but treat that check as lower‑confidence since it's not how you'd actually hold the phone in AR use</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">roll</span></div>
+        <div class="g-def">Side‑to‑side tilt (rotation around the phone's forward axis), from <span class="m">gamma</span>.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> near 0° — phone held level, not canted sideways</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">gyro rate z</span></div>
+        <div class="g-def">Current rotation rate around the vertical (yaw) axis, from
+          <span class="m">devicemotion</span>'s <span class="m">rotationRate.alpha</span>, in °/s.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> near 0 when still; a number that tracks your panning speed while turning</div>
+          <div><span class="tag bad">bad</span> "— (no devicemotion)" — this device can't run the Complementary filter; it's EMA‑only for D‑0.1</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">screen angle</span></div>
+        <div class="g-def">OS‑reported screen rotation, used to correct heading for orientation.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> 0° — the spike's maths assumes portrait; anything else means you rotated the phone</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ POSITION & CAMERA ============ -->
+  <section id="position">
+    <p class="kicker">Readout panel · rows 12–17</p>
+    <h2>Position &amp; camera</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">position</span></div>
+        <div class="g-def">Your GPS‑derived latitude/longitude.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> stable — doesn't jump while you stand still; jumps of 10–20 m+ at rest mean a poor lock</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">gps accuracy</span></div>
+        <div class="g-def">The device's own confidence radius for the fix, in metres.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> &lt; 20 m outdoors, often &lt; 10 m after a short wait</div>
+          <div><span class="tag watch">watch</span> &gt; 50 m — wait longer under open sky before trusting distances computed from it (barely affects heading itself)</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">gps altitude</span></div>
+        <div class="g-def">Reported elevation above sea level, with its own accuracy figure.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> a plausible number for the location, small ± accuracy</div>
+          <div><span class="tag watch">watch</span> "null (not provided)" — happens on some Android devices; the real app needs a fallback there</div>
+        </div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">camera</span></div>
+        <div class="g-def">The actual resolution/facing the browser granted for the video stream.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> <span class="m">environment</span> (rear) facing, a real non‑zero resolution</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">camera FOV exposed</span></div>
+        <div class="g-def">Whether the camera API told us the lens's field of view.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal (expected)</span> "no" almost everywhere — not a fault, it just means Stage 3's manual FOV calibration is mandatory, not optional</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JITTER ============ -->
+  <section id="jitter">
+    <p class="kicker">Test 3 output</p>
+    <h2>Jitter test</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">samples · Hz</span></div>
+        <div class="g-def">How many readings were captured in the 30 s window and at what rate.</div>
+        <div class="g-vals"><div><span class="tag watch">watch</span> a low sample count is an event‑rate problem, not a jitter problem — check "event rate" first</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">steady‑state σ</span></div>
+        <div class="g-def">Standard deviation of headings around the mean, <em>after</em> the
+          first 3 s of settling is excluded. The number that predicts how much the label will
+          shimmer.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> &lt; 1°; 1–2.5° is workable with smoothing; &gt; 2.5° means the raw compass on this device is genuinely noisy</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">steady‑state peak‑to‑peak</span></div>
+        <div class="g-def">The worst single swing away from the mean, in the settled portion only.</div>
+        <div class="g-vals"><div><span class="tag ideal">ideal</span> &lt; 4°</div></div>
+      </div>
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">startup transient (ignored)</span></div>
+        <div class="g-def">The largest deviation in the first 3 s — shown for context, not used
+          in the verdict.</div>
+        <div class="g-vals"><div><span class="tag ideal">normal</span> a larger number here (sensor/hand settling) is expected and not a red flag by itself</div></div>
+      </div>
+    </div>
+    <div class="box"><span class="h">Reminder</span>Run it 2–3 times and keep the worst steady‑state σ — one good run doesn't rule out interference you just happened not to be near.</div>
+  </section>
+
+  <!-- ============ KNOWN BEARING ============ -->
+  <section id="bearing">
+    <p class="kicker">Test 4 output</p>
+    <h2>Known‑bearing check</h2>
+    <div class="glossary">
+      <div class="g-row">
+        <div class="g-head"><span class="g-name">errorIfRawIsTrue / errorIfRawIsMagnetic</span></div>
+        <div class="g-def">The two competing hypotheses' error against the true bearing you
+          typed in: how far off the label would be if the raw reading were already true north,
+          versus if it were magnetic and needed the declination correction.</div>
+        <div class="g-vals">
+          <div><span class="tag ideal">ideal</span> after 3–5 checks in different directions, one hypothesis consistently wins with small error (&lt; 5°) and the other is consistently larger — that tells you the frame</div>
+          <div><span class="tag bad">bad</span> both are large and inconsistent across checks — that's not a frame problem, it's interference; the compass itself needs a cleaner spot</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    TrekSense Peak Finder · Reading the Spike · pairs with <span class="m">sensor-spike.html</span>
+    and <span class="m">stage-0-runbook.html</span>.
+  </div>
+</div>

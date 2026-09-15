@@ -210,27 +210,31 @@
     <h3>You'll need</h3>
     <ul class="need">
       <li>Push access to <span class="m">github.com/Ashish-119/Treksense</span></li>
-      <li>The Stage 0 files committed and pushed (<span class="m">docs/spike/…</span>)</li>
+      <li>A Vercel account (free tier is fine) signed in with GitHub</li>
     </ul>
+
+    <div class="box"><span class="h">Since Stage 1</span>The whole site deploys to <strong>Vercel</strong>, not GitHub
+      Pages — <span class="m">/api/peaks</span> needs a real server and GitHub Pages can't run it. One deployment
+      for everything, static pages included.</div>
 
     <h3>Steps</h3>
     <ol class="steps" data-task="1">
-      <li><input type="checkbox"><span class="txt">Commit and push the <span class="m">docs/</span> folder to a branch on the remote (e.g. <span class="m">main</span> or <span class="m">feature/peak-finder</span>).</span></li>
-      <li><input type="checkbox"><span class="txt">On GitHub: repo → <strong>Settings</strong> → <strong>Pages</strong> (left sidebar).</span></li>
-      <li><input type="checkbox"><span class="txt">Under <strong>Build and deployment</strong> → <strong>Source</strong>, choose <strong>Deploy from a branch</strong>.</span></li>
-      <li><input type="checkbox"><span class="txt">Set <strong>Branch</strong> to the one you pushed, <strong>folder</strong> to <span class="m">/ (root)</span>, click <strong>Save</strong>.</span></li>
-      <li><input type="checkbox"><span class="txt">Wait ~1–2 min for the green "Your site is live" banner. The URL base is <span class="m">https://ashish-119.github.io/Treksense/</span>.</span></li>
-      <li><input type="checkbox"><span class="txt">Open <span class="m">https://ashish-119.github.io/Treksense/docs/spike/sensor-spike.html</span> in a desktop browser. You should see the gate screen with a preflight list.</span></li>
+      <li><input type="checkbox"><span class="txt">Commit and push everything to the remote (<span class="m">main</span> or your feature branch) — <span class="m">api/</span>, <span class="m">js/tiles.js</span>, <span class="m">vercel.json</span>, <span class="m">docs/</span>.</span></li>
+      <li><input type="checkbox"><span class="txt">On <a class="link" href="https://vercel.com" target="_blank" rel="noopener">vercel.com</a>: <strong>Add New… → Project</strong>, choose <strong>Treksense</strong> from your GitHub repos.</span></li>
+      <li><input type="checkbox"><span class="txt">Leave the framework preset on its auto-detected default — no build command needed, the site has no build step. Click <strong>Deploy</strong>.</span></li>
+      <li><input type="checkbox"><span class="txt">Wait ~1 min. Note the assigned URL, e.g. <span class="m">treksense-xyz.vercel.app</span> (Vercel dashboard → Project → Domains).</span></li>
+      <li><input type="checkbox"><span class="txt">Open <span class="m">https://&lt;your-project&gt;.vercel.app/docs/spike/sensor-spike.html</span> in a desktop browser. You should see the gate screen with a preflight list.</span></li>
       <li><input type="checkbox"><span class="txt">Confirm the preflight shows <strong>Secure context: yes</strong>. Send the link to your phones (message it to yourself / AirDrop).</span></li>
+      <li><input type="checkbox"><span class="txt">Sanity-check the API too: open <span class="m">/api/peaks?bbox=30.5,79.0,31.0,79.5</span> on the same domain — should return JSON, not an error page.</span></li>
     </ol>
 
-    <div class="box"><span class="h">Record</span>The live spike URL, so every device uses the same one.</div>
-    <textarea class="note" data-note="1" placeholder="Spike URL: …"></textarea>
+    <div class="box"><span class="h">Record</span>Your Vercel project URL, so every device uses the same one.</div>
+    <textarea class="note" data-note="1" placeholder="Vercel URL: …"></textarea>
 
     <div class="box warn"><span class="h">If it goes wrong</span>
-      <strong>No Pages option / 404:</strong> the repo may be private on a free plan — make it public, or use Vercel instead (import the repo, then
-      <span class="m">https://&lt;project&gt;.vercel.app/docs/spike/sensor-spike.html</span>).
-      <strong>Preflight "Secure context: NO":</strong> you opened a <span class="m">file://</span> path or plain <span class="m">http</span> — use the <span class="m">https://</span> Pages URL.</div>
+      <strong>Deploy fails:</strong> check the Vercel build log — this project has no build step, so a failure usually means a syntax error in <span class="m">api/peaks.js</span> or a missing file it <span class="m">require()</span>s.
+      <strong><span class="m">/api/peaks</span> 404s:</strong> confirm <span class="m">vercel.json</span> and the <span class="m">api/</span> folder were actually pushed and included in the deploy.
+      <strong>Preflight "Secure context: NO":</strong> you opened a <span class="m">http://</span> or <span class="m">file://</span> path — use the <span class="m">https://…vercel.app</span> URL.</div>
   </section>
 
   <!-- ============ TASK 2 ============ -->

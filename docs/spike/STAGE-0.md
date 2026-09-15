@@ -39,20 +39,21 @@ blob to paste into this file.
 ### Step 1 · Put the spike on an HTTPS URL
 
 Camera and motion sensors **only work in a secure context from a real origin** — not
-from `file://`, and not reliably inside the embedded artifact preview. Easiest path,
-since the repo is already on GitHub:
+from `file://`, and not reliably inside the embedded artifact preview.
+
+> As of Stage 1, the whole site (this spike included) deploys to **Vercel** —
+> `/api/peaks` needs it and GitHub Pages can't run it, so Vercel is the one
+> deployment now. Your spike URL is:
+> ```
+> https://<your-vercel-project>.vercel.app/docs/spike/sensor-spike.html
+> ```
+> (fill in your actual project name from the Vercel dashboard after the first deploy;
+> the historical `ashish-119.github.io/Treksense/...` links from earlier in Stage 0
+> point at a copy that's no longer being updated.)
 
 1. Push this branch to `github.com/Ashish-119/Treksense`.
-2. Repo → **Settings** → **Pages**.
-3. **Source:** "Deploy from a branch". **Branch:** `main` (or your branch), **folder:** `/ (root)`. Save.
-4. Wait ~1 min. Your spike is at:
-   ```
-   https://ashish-119.github.io/Treksense/docs/spike/sensor-spike.html
-   ```
-5. Open that URL on each test phone (AirDrop / message the link to yourself).
-
-*Alternative:* connect the repo to **Vercel** (also gives HTTPS automatically) and use
-`https://<project>.vercel.app/docs/spike/sensor-spike.html`.
+2. On [vercel.com](https://vercel.com), import the repo (GitHub sign-in → Add New Project → select `Treksense`). No config needed — `vercel.json` already sets the API function's timeout.
+3. Deploy. Open the spike URL above on each test phone (AirDrop / message the link to yourself).
 
 ### Step 2 · Line up 2–3 test devices
 
@@ -224,3 +225,24 @@ the first 3 s and weight σ — re‑run to get the corrected number.)
   The smoothing decision will be driven by the **worst Android** device — still to test.
 - **Still blocking Stage 0 exit:** outdoor drift watch, outdoor known‑bearing check (both
   devices), Android testing, `WMM.COF` download.
+
+---
+
+## Status update — 2026‑09‑12
+
+Outdoor pass on iPhone 17 confirmed by the user ("full green" / "everything normal
+and expected" — drift watch + known‑bearing check both outdoors, in a wider open
+area). Exact σ / peak‑to‑peak / error‑in‑degrees numbers weren't logged this round;
+if Stage 3 calibration ever disagrees with the "EMA is enough on iOS" call below,
+re‑run Task 5/6 and paste the JSON export here.
+
+**Decision: proceed to Stage 1 with Stage 0 closed for iOS, Android carried forward.**
+Backend work (Stage 1) doesn't depend on either — it's addressed before/alongside
+Stage 3 (AR projection engine), where the true/magnetic assumption and per-device
+smoothing actually get consumed. Tracked in `docs/BUILD-LOG.md`.
+
+- **D‑0.1 (smoothing):** iOS → EMA, α≈0.15–0.2. Android → TBD, defer.
+- **D‑0.2 (declination):** iOS doesn't need it (`webkitCompassHeading` is true).
+  `WMM.COF` download deferred to before Stage 3 task 3‑1. Android confirmation deferred.
+- **D‑0.3 (hFOV):** still open — needs the Stage 3 calibration flow, not just the spike.
+- **D‑0.4 (devices):** Primary iOS = iPhone 17 ✅. Primary Android / low‑end = still needed.
