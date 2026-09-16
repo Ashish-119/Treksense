@@ -125,5 +125,10 @@
   { "name": "Nanda Khat", "lat": 30.2333, "lon": 80.05, "elevation": 6611, "range": "Kumaon Himalaya" },
   { "name": "Rajrambha", "lat": 30.2833, "lon": 80.3333, "elevation": 6537, "range": "Kumaon Himalaya" },
   { "name": "Adi Kailash (Chhota Kailash)", "lat": 30.2333, "lon": 81.0333, "elevation": 5945, "range": "Kumaon Himalaya" },
-  { "name": "Om Parvat", "lat": 30.2, "lon": 81.0333, "elevation": 5590, "range": "Kumaon Himalaya" }
+  { "name": "Om Parvat", "lat": 30.2, "lon": 81.0333, "elevation": 5590, "range": "Kumaon Himalaya" },
+  { "name": "Kangto", "lat": 27.8703, "lon": 92.5219, "elevation": 7042, "range": "Arunachal Himalaya" },
+  { "name": "Nyegi Kangsang", "lat": 27.8931, "lon": 92.5289, "elevation": 7047, "range": "Arunachal Himalaya" },
+  { "name": "Gorichen Peak", "lat": 27.7331, "lon": 92.3822, "elevation": 6858, "range": "Arunachal Himalaya" },
+  { "name": "Gorichen II", "lat": 27.7419, "lon": 92.4058, "elevation": 6538, "range": "Arunachal Himalaya" },
+  { "name": "Nyegyi Kangsang II", "lat": 27.8833, "lon": 92.55, "elevation": 6883, "range": "Arunachal Himalaya" }
 ]
