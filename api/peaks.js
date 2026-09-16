@@ -26,9 +26,10 @@ const OVERPASS_ENDPOINTS = [
 
 const EARTH_R = 6371;              // km
 const MAX_RESULTS = 800;
-const PER_ENDPOINT_TIMEOUT_MS = 13500; // 2 endpoints × 13.5s = 27s, fits under vercel.json's 30s maxDuration.
-                                        // 12s was too tight for genuinely dense areas (Ladakh's plateau, e.g.) —
-                                        // found via a live coverage check across Himachal/Ladakh/Arunachal/Sikkim.
+const PER_ENDPOINT_TIMEOUT_MS = 20000; // 2 endpoints × 20s = 40s, fits under vercel.json's 45s maxDuration.
+                                        // 12s (then 13.5s) was still too tight for the densest areas (Ladakh's
+                                        // plateau, e.g.) — found via a live coverage check across Himachal/
+                                        // Ladakh/Arunachal/Sikkim. Matches Overpass's own [timeout:25] more closely.
 const MAX_BBOX_DEG2 = 1.0;         // ~4 tiles worth (each tile = 0.25 deg^2)
 const MAX_BBOX_SIDE_DEG = 3;       // guards a very thin, very long box
 const TILE_DEG = 0.5;
