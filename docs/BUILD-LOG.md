@@ -9,7 +9,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **1** | Backend + data layer (`/api/peaks?bbox=`) | ✅ done | 2026‑09‑12 | `api/peaks.js` + `api/_fallback-peaks.json` + `js/tiles.js` + `docs/PEAKS-API.md`. Tested against live Overpass and the fallback path via `scripts/dev-server.py`. |
 | **2** | On-device store + preparation | ✅ done | 2026‑09‑16 | `js/peakstore.js` (IndexedDB) + `sw.js` + `docs/spike/stage-2-store-test.html`. DoD verified in-browser, including a real bug found and fixed mid-test. |
 | **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
-| **4** | Automatic rolling window | ⬜ not started | — | |
+| **4** | Automatic rolling window | 🟡 code done, awaiting your test | 2026‑09‑17 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Testable on a **desktop browser, no phone needed** — see `docs/spike/stage-4-rolling-window-test.html`. |
 | **5** | Fallbacks, polish, a11y | ⬜ not started | — | |
 | **6** | Field test → harden → launch | ⬜ not started | — | |
 
@@ -282,3 +282,80 @@ behaviour, not a gap to keep closing with bigger timeouts.
 any way — it works anywhere OSM has peak data, which is effectively global.
 Some specific dense areas may take longer or briefly show the offline set
 while Overpass catches up; that degrades gracefully rather than failing.
+
+## Stage 4 — what shipped
+
+Reused rather than rebuilt: **t4-3 (tile diff/merge) and t4-4 (eviction) were
+already correct in `prepareArea()` since Stage 2** — including the eviction
+bug fix from that stage (a failed attempt never touches existing data). Stage
+4 only needed to add the *policy* that decides *when* to call it automatically.
+
+- **`js/peakstore.js` — `autoPrepareIfNeeded(center, opts)`** (t4-1, t4-2): the
+  drift detector. Cheap to call on every position update — one IndexedDB read
+  (`getPrep()`) decides in a moment whether anything needs to happen (nothing
+  prepared yet, or drifted > 15 km). If so, it online-gates the attempt with
+  **`pingOnline()`**: checks `navigator.onLine` first (fast, but known
+  unreliable — reflects the OS network interface, not real reachability),
+  then a real, cheap same-origin request (`/api/peaks` for a 1×1 km ocean box
+  — guaranteed no peaks, resolves fast, but genuinely round-trips through
+  Vercel to Overpass) before committing to a full multi-tile prepare. A
+  failed ping (or an attempt where every tile fails) triggers exponential
+  backoff — 30 s, 60 s, 120 s... capped at 20 min — so a flaky connection
+  doesn't cause a retry storm; a real success resets the backoff to zero.
+- **`peak-finder.html` / `js/peakfinder.js`**: the manual "Prepare this area"
+  banner and button are gone, exactly as the blueprint's own Stage 4
+  description says ("remove the manual prepare button"). Every geolocation
+  update now feeds `autoPrepareTick()` (throttled to at most once per 3 s),
+  which calls `autoPrepareIfNeeded()` and refreshes the peak list only when
+  something actually changed. A new **staleness chip** (t4-5) shows
+  `"prepared 12m ago · 8 km away"` in steady state, `"preparing…"` with live
+  per-tile progress while a fetch is running, or `"offline — retrying
+  automatically"` during a backoff window.
+- **`docs/spike/stage-4-rolling-window-test.html`** + **`.js`**: a step-through
+  harness driving a real ~290 km Delhi → Sankri route through
+  `autoPrepareIfNeeded()`, one waypoint at a time — this is the blueprint's
+  own DoD language ("feeding a 300 km mock travel track") made literal.
+  **Testable entirely on a desktop browser** — DevTools' Network → Offline
+  toggle stands in for a connectivity gap, same technique already proven in
+  Stage 2. No phone required for this stage's DoD, unlike Stage 3.
+- **Caught proactively before handoff, not found by testing:** the same class
+  of `[hidden]` bug from Stage 3 — `.pkf-chip` sets `display: inline-flex`
+  unconditionally, which would have defeated the new staleness chip's
+  `hidden` attribute the same way `.pkf-gate`/`.pkf-error` broke last stage.
+  Checked for it this time before it shipped; added the `[hidden]` override.
+- **Deliberately skipped: t4-6, Background Sync.** The blueprint marks it
+  optional and the DoD doesn't require it — implementing it properly means
+  duplicating prepare logic into the service worker's execution context
+  (IndexedDB access there is fine, but the cross-context plumbing is real
+  work for a "finish an interrupted prepare after the tab closes" edge case).
+  Same scoping discipline as Stage 3's map-mode/manual-location deferrals —
+  flagging so it reads as a decision, not an oversight.
+- `sw.js` `SW_VERSION` bumped to `pf-stage4-v1` (`peakstore.js` and
+  `peakfinder.js`, both in `APP_SHELL`, changed).
+
+## Stage 4 — manual test plan
+
+**No phone needed for this one** — the rolling window is pure data-layer
+logic, same as Stage 2.
+
+1. `python3 scripts/dev-server.py 8000`, open
+   `http://localhost:8000/docs/spike/stage-4-rolling-window-test.html`.
+2. Click **"Next waypoint →"** a few times. Watch the log — early steps
+   (Delhi, Panipat, Ambala) should prepare with few/no real peaks (correct —
+   real geography, see the 2026‑09‑17 coverage check above); later ones
+   (Rishikesh onward) should start finding real mountain data, and once
+   you're deep into the Garhwal foothills, tiles from the very first
+   (Delhi-area) waypoints should **evict** as they fall outside the 250 km
+   keep-box — watch the "Tiles in store" table shrink on the Delhi end while
+   it grows on the Sankri end.
+3. Try **"Run all remaining"** to step through automatically.
+4. Test the connectivity gap: DevTools → Network → **Offline**, click "Next
+   waypoint" — should log `skipped: offline` with a backoff time, and the
+   store must stay untouched. Go back **Online**, keep stepping — should
+   resume normally once the backoff window passes.
+5. **Reset + clear**, confirm the table/log both go back to empty.
+6. Separately, on `peak-finder.html` itself (phone, whenever convenient): the
+   "Prepare this area" button should simply be gone. On first load with an
+   empty store, a status chip near the top should read something like
+   `"no peaks prepared yet — waiting for a connection"`, then automatically
+   flip to `"prepared just now · here"` without you tapping anything.

@@ -879,12 +879,12 @@
         <div class="build">
           <span class="lbl">Build</span>
           <ul data-stage="4">
-            <li><input type="checkbox" id="t4-1"><label for="t4-1"><span><span class="m">watchPosition</span> → drift detector (moved &gt; 15&nbsp;km from prepared centre, or store empty)</span></label></li>
-            <li><input type="checkbox" id="t4-2"><label for="t4-2"><span>Online gate: only fetch on <span class="m">navigator.onLine</span> + a successful lightweight ping; back off on failure</span></label></li>
-            <li><input type="checkbox" id="t4-3"><label for="t4-3"><span>Tile diff → fetch missing / &gt;30-day-old tiles → merge by id (never wholesale replace)</span></label></li>
-            <li><input type="checkbox" id="t4-4"><label for="t4-4"><span>Eviction: drop tiles outside a 250&nbsp;km keep-box and their orphaned peaks</span></label></li>
-            <li><input type="checkbox" id="t4-5"><label for="t4-5"><span>Online/offline transition handling; staleness badge with age + prepared-centre distance</span></label></li>
-            <li><input type="checkbox" id="t4-6"><label for="t4-6"><span>Optional: <span class="m">Background Sync</span> to finish an interrupted prepare when signal returns</span></label></li>
+            <li><input type="checkbox" id="t4-1" checked><label for="t4-1"><span><span class="m">watchPosition</span> → drift detector (moved &gt; 15&nbsp;km from prepared centre, or store empty)</span></label></li>
+            <li><input type="checkbox" id="t4-2" checked><label for="t4-2"><span>Online gate: only fetch on <span class="m">navigator.onLine</span> + a successful lightweight ping; back off on failure</span></label></li>
+            <li><input type="checkbox" id="t4-3" checked><label for="t4-3"><span>Tile diff → fetch missing / &gt;30-day-old tiles → merge by id (never wholesale replace) <em>— built in Stage 2, unchanged</em></span></label></li>
+            <li><input type="checkbox" id="t4-4" checked><label for="t4-4"><span>Eviction: drop tiles outside a 250&nbsp;km keep-box and their orphaned peaks <em>— built in Stage 2, unchanged</em></span></label></li>
+            <li><input type="checkbox" id="t4-5" checked><label for="t4-5"><span>Online/offline transition handling; staleness badge with age + prepared-centre distance</span></label></li>
+            <li><input type="checkbox" id="t4-6"><label for="t4-6"><span>Optional: <span class="m">Background Sync</span> to finish an interrupted prepare when signal returns <em>— deliberately skipped, see BUILD-LOG (optional per this task, not needed for the DoD)</em></span></label></li>
           </ul>
         </div>
         <div class="dod"><span class="lbl">Definition of done</span><p>Feeding a 300&nbsp;km mock travel track with intermittent connectivity, the store always covers ~100&nbsp;km around the mock position wherever a connection was available, and total storage stays bounded.</p></div>

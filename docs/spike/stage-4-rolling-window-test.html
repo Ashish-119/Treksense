@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Peak Finder — Stage 4 Rolling Window Test</title>
+<style>
+  :root { --bg:#0d1116; --panel:#161c23; --panel2:#1b222b; --line:#2a323c; --ink:#e9eae5; --dim:#8b939d;
+          --accent:#e0913f; --good:#57c98a; --bad:#e0715a; --warn:#e6a94b;
+          --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); font-family:var(--mono); line-height:1.55;
+         font-size:13px; padding:20px 16px 60px; max-width:680px; margin:0 auto; }
+  h1 { font-size:17px; margin-bottom:4px; }
+  .eyebrow { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  p.lede { color:var(--dim); font-size:12.5px; margin-bottom:18px; max-width:60ch; }
+  section { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; background:var(--panel); }
+  h2 { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); margin-bottom:10px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  button { background:var(--accent); color:#111; border:0; border-radius:8px; font:inherit; font-weight:700;
+      padding:9px 16px; cursor:pointer; font-size:12.5px; }
+  button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:400; }
+  button:disabled { opacity:.45; cursor:default; }
+  .rows > div { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-top:1px solid var(--line); font-size:12px; }
+  .rows > div:first-child { border-top:0; }
+  .rows .k { color:var(--dim); } .rows .v.ok{color:var(--good);} .rows .v.bad{color:var(--bad);} .rows .v.warn{color:var(--warn);}
+  #log { font-size:11.5px; color:var(--dim); white-space:pre-wrap; max-height:220px; overflow-y:auto;
+         background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px; }
+  th, td { text-align:left; padding:5px 6px; border-top:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .tag { padding:1px 6px; border-radius:3px; font-size:10px; font-weight:700; }
+  .tag.prepared { background:#1c3b2c; color:var(--good); } .tag.stale{background:#3a2820;color:var(--warn);} .tag.fetching{background:#233044;color:#7fb2e6;}
+  .route { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .route .wp { padding:4px 9px; border-radius:12px; border:1px solid var(--line); font-size:11px; color:var(--dim); }
+  .route .wp.done { border-color:var(--good); color:var(--good); }
+  .route .wp.now { border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .steps { list-style:none; counter-reset:s; }
+  .steps li { counter-increment:s; padding:5px 0 5px 24px; position:relative; font-size:12.5px; }
+  .steps li::before { content: counter(s); position:absolute; left:0; top:5px; width:16px; height:16px; border:1px solid var(--line);
+      border-radius:50%; font-size:10px; display:flex; align-items:center; justify-content:center; color:var(--dim); }
+</style>
+</head>
+<body>
+  <p class="eyebrow">TrekSense · Peak Finder · Stage 4</p>
+  <h1>Rolling window test</h1>
+  <p class="lede">Drives <span style="color:var(--ink)">PeakStore.autoPrepareIfNeeded()</span> — the Stage 4
+    drift detector, online gate/backoff, and (reused from Stage 2) tile diff + eviction — through a real
+    ~290&nbsp;km route from Delhi toward Sankri, one waypoint at a time. This is the blueprint's own DoD
+    language literally: "feeding a 300&nbsp;km mock travel track." No phone needed — desktop DevTools'
+    Network → Offline toggle simulates the connectivity gap.</p>
+
+  <section>
+    <h2>Route — Delhi → Sankri, ~290 km</h2>
+    <div class="route" id="routeChips"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="stepBtn">Next waypoint →</button>
+      <button class="ghost" id="runBtn">Run all remaining</button>
+      <button class="ghost" id="resetBtn">Reset route + clear store</button>
+    </div>
+    <div id="log">idle — tap "Next waypoint" to start</div>
+  </section>
+
+  <section>
+    <h2>Prep status</h2>
+    <div class="rows" id="prepRows"></div>
+  </section>
+
+  <section>
+    <h2>Tiles in store (should stay bounded — old ones evict as you move away)</h2>
+    <table id="tilesTable"><thead><tr><th>tileKey</th><th>status</th><th>peaks</th><th>age</th></tr></thead><tbody></tbody></table>
+    <div class="rows" style="margin-top:8px"><div><span class="k">storage estimate</span><span class="v" id="usageRow">—</span></div></div>
+  </section>
+
+  <section>
+    <h2>How to test the "intermittent connectivity" part of the DoD</h2>
+    <ol class="steps">
+      <li>Step through a few waypoints normally (online) — watch tiles accumulate and old ones evict once you're &gt; 250 km from the prepared centre.</li>
+      <li>Open DevTools → Network → set <strong>Offline</strong>.</li>
+      <li>Click "Next waypoint →" once or twice — should log <span style="color:var(--warn)">"skipped: offline"</span> with a backoff time, and the store must stay exactly as it was (nothing evicted, nothing corrupted — same guarantee Stage 2 verified).</li>
+      <li>Set Network back to <strong>Online</strong>, keep stepping — the very next waypoint past the backoff window should prepare normally again.</li>
+    </ol>
+    <div class="rows" style="margin-top:10px">
+      <div><span class="k">DoD</span><span class="v">store always covers ~100 km around the mock position wherever a connection was available; storage stays bounded</span></div>
+    </div>
+  </section>
+
+  <script src="../../js/tiles.js"></script>
+  <script src="../../js/peakstore.js"></script>
+  <script src="stage-4-rolling-window-test.js"></script>
+</body>
+</html>

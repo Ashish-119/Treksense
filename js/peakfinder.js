@@ -122,8 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
     S.headingOffset = 0; S.pitchOffset = 0; persistOffsets();
     toast("Field correction reset.");
   });
-  $("pkfPrepareToggleBtn").addEventListener("click", () => { $("pkfBanner").hidden = !$("pkfBanner").hidden; });
-  $("pkfPrepareBtn").addEventListener("click", doPrepare);
   $("pkfSensorChip").addEventListener("click", () => toast("Wave your phone in a slow figure-8 a few times to recalibrate the compass."));
   $("pkfCalibBtn").addEventListener("click", openCalibStep1);
   $("pkfCalibClose").addEventListener("click", closeCalib);
@@ -164,9 +162,11 @@ async function startFlow() {
 
     $("pkfGate").hidden = true;
     $("pkfView").hidden = false;
-    await loadPeaksForCurrentArea();
+    await loadPeaksForCurrentArea(); // show whatever's already cached immediately, before any network round-trip
     setupDragHandlers();
     requestAnimationFrame(loop);
+    autoPrepareArmed = true;
+    autoPrepareTick(); // and kick off the rolling-window check right away using the position we already have
   } catch (e) {
     showError(e);
   }
@@ -208,6 +208,16 @@ function geoErrorMessage(err) {
   if (err.code === 3) return "Location timed out. Try again outdoors with a clear sky view.";
   return err.message || "Could not get your location.";
 }
+/* Every position update — first fix and every one after — routes through
+   here. Once the AR view is up, each update also feeds the Stage 4 rolling
+   window (autoPrepareTick), which cheaply no-ops unless the user has
+   actually drifted from the prepared area. */
+let autoPrepareArmed = false;
+function onPositionUpdate(pos) {
+  S.pos = { lat: pos.coords.latitude, lon: pos.coords.longitude, alt: pos.coords.altitude, acc: pos.coords.accuracy };
+  if (S.observerAlt == null && pos.coords.altitude != null) S.observerAlt = pos.coords.altitude;
+  if (autoPrepareArmed) autoPrepareTick();
+}
 function waitForFirstPosition() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error("Geolocation isn't supported in this browser.")); return; }
@@ -215,8 +225,7 @@ function waitForFirstPosition() {
     const timer = setTimeout(() => { if (!settled) { settled = true; reject(new Error("Location timed out. Try again outdoors with a clear sky view.")); } }, 16000);
     navigator.geolocation.watchPosition(
       (pos) => {
-        S.pos = { lat: pos.coords.latitude, lon: pos.coords.longitude, alt: pos.coords.altitude, acc: pos.coords.accuracy };
-        if (S.observerAlt == null && pos.coords.altitude != null) S.observerAlt = pos.coords.altitude;
+        onPositionUpdate(pos);
         if (!settled) { settled = true; clearTimeout(timer); resolve(); }
       },
       (err) => { if (!settled) { settled = true; clearTimeout(timer); reject(new Error(geoErrorMessage(err))); } },
@@ -308,39 +317,56 @@ function currentFrameInterval() {
   return FRAME_MS_ACTIVE;
 }
 
-/* ---------- data ---------- */
+/* ---------- data (Stage 4: automatic rolling window) ---------- */
 async function loadPeaksForCurrentArea() {
   if (!S.pos) return;
   const prep = await PeakStore.getPrep();
-  const list = await PeakStore.peaksForBox(S.pos, (prep && prep.radiusKm) || PREPARE_RADIUS_KM);
-  S.peaks = list;
-  if (!list.length) {
-    $("pkfBannerText").textContent = "No peaks prepared near you yet.";
-    $("pkfBanner").hidden = false;
-  }
+  S.peaks = await PeakStore.peaksForBox(S.pos, (prep && prep.radiusKm) || PREPARE_RADIUS_KM);
 }
-async function doPrepare() {
+
+/* Called on every position update once armed. autoPrepareIfNeeded() itself
+   is cheap to call repeatedly — it no-ops (one IndexedDB read) unless the
+   user has actually drifted from the prepared centre or nothing's prepared
+   yet, and it online-gates + backs off on its own. This is the whole
+   "remove the manual prepare button" piece — see docs/BUILD-LOG.md.
+   Lightly throttled so a device that fires watchPosition unusually fast
+   doesn't spam IndexedDB reads for no reason. */
+let lastAutoTickAt = 0;
+const AUTO_TICK_MIN_INTERVAL_MS = 3000;
+async function autoPrepareTick() {
   if (!S.pos) return;
-  $("pkfPrepareBtn").disabled = true;
-  const log = $("pkfPrepareLog");
-  log.hidden = false;
-  log.textContent = "preparing…";
-  try {
-    const summary = await PeakStore.prepareArea(S.pos, PREPARE_RADIUS_KM, {
-      onStatus(evt) {
-        if (evt.phase === "start") log.textContent = evt.totalTiles + " tiles cover this area · " + evt.toFetch + " need fetching";
-        else if (evt.phase === "tile-done") log.textContent += "\n✓ " + evt.tileKey + " — " + evt.peakCount + " peaks" + (evt.degraded ? " (offline dataset)" : "");
-        else if (evt.phase === "tile-error") log.textContent += "\n✗ " + evt.tileKey + " — " + evt.error;
-      },
-    });
-    log.textContent += "\ndone — " + summary.fetched + " fetched, +" + summary.peaksAdded + " peaks";
-    if (summary.aborted) log.textContent += "\n⚠ offline or provider down — nothing changed";
-    await loadPeaksForCurrentArea();
-    if (S.peaks.length) $("pkfBanner").hidden = true;
-  } catch (e) {
-    log.textContent += "\nerror: " + ((e && e.message) || e);
-  }
-  $("pkfPrepareBtn").disabled = false;
+  const now = Date.now();
+  if (now - lastAutoTickAt < AUTO_TICK_MIN_INTERVAL_MS) return;
+  lastAutoTickAt = now;
+  const result = await PeakStore.autoPrepareIfNeeded(S.pos, { radiusKm: PREPARE_RADIUS_KM, onStatus: onPrepStatus });
+  if (result && result.fetched > 0) await loadPeaksForCurrentArea();
+  await refreshStaleChip();
+}
+function onPrepStatus(evt) {
+  if (evt.phase === "checking-online") setPrepLine("preparing…");
+  else if (evt.phase === "fetching") setPrepLine("preparing — " + evt.tileKey + " (" + (evt.index + 1) + "/" + evt.total + ")");
+  else if (evt.phase === "offline") setPrepLine("offline — retrying automatically");
+  else if (evt.phase === "done") setPrepLine(null); // refreshStaleChip() paints the steady-state line right after
+}
+function setPrepLine(text) {
+  if (text) { $("pkfStaleChip").textContent = text; $("pkfStaleChip").hidden = false; }
+}
+function fmtAge(ms) {
+  if (ms == null) return "—";
+  const s = Math.round((Date.now() - ms) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.round(s / 60) + "m ago";
+  if (s < 86400) return Math.round(s / 3600) + "h ago";
+  return Math.round(s / 86400) + "d ago";
+}
+async function refreshStaleChip() {
+  const prep = await PeakStore.getPrep();
+  const chip = $("pkfStaleChip");
+  if (!prep) { chip.textContent = "no peaks prepared yet — waiting for a connection"; chip.hidden = false; return; }
+  const distKm = S.pos ? haversineKm(S.pos, prep.center) : null;
+  const distTxt = distKm == null ? "" : distKm < 2 ? " · here" : " · " + Math.round(distKm) + " km away";
+  chip.textContent = "prepared " + fmtAge(prep.preparedAt) + distTxt;
+  chip.hidden = false;
 }
 
 /* ---------- render loop ---------- */

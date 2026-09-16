@@ -25,7 +25,15 @@
   var DATASET_VERSION = "1";
   var TILE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — re-fetch a tile older than this
   var DEFAULT_KEEP_RADIUS_KM = 250;                // evict tiles whose centre is farther than this from prep centre
+  var DEFAULT_RADIUS_KM = 100;                     // the ~100 km disc the blueprint keeps prepared around the user
   var API_BASE = "";                               // same-origin; Stage 1's /api/peaks lives on this domain
+
+  /* ---- Stage 4: automatic rolling window ---- */
+  var DRIFT_KM = 15;                    // re-centre once the user is this far from the prepared centre
+  var PING_TIMEOUT_MS = 6000;
+  var BACKOFF_BASE_MS = 30 * 1000;      // first retry wait after a failed/offline attempt
+  var BACKOFF_MAX_MS = 20 * 60 * 1000;  // cap backoff at 20 min so it never gives up for the whole session
+  var autoState = { inFlight: false, backoffMs: 0, backoffUntil: 0 };
 
   var dbPromise = null;
   function openDB() {
@@ -162,7 +170,7 @@
     opts = opts || {};
     var onStatus = opts.onStatus || function () {};
     var keepRadiusKm = opts.keepRadiusKm || DEFAULT_KEEP_RADIUS_KM;
-    radiusKm = radiusKm || 100;
+    radiusKm = radiusKm || DEFAULT_RADIUS_KM;
 
     var tileKeys = Tiles.tilesCoveringDisc(center.lat, center.lon, radiusKm);
     var now = Date.now();
@@ -226,9 +234,88 @@
     return summary;
   }
 
+  /**
+   * A small, cheap same-origin request that exercises the real network path
+   * (browser → Vercel → Overpass), not just `navigator.onLine` (which only
+   * reflects the OS network interface, not real reachability — a phone on
+   * Wi-Fi with no internet still reports onLine:true). Queries a 1x1km ocean
+   * box (guaranteed no peaks, resolves fast either way) so it's cheap to run
+   * before committing to a full multi-tile prepare.
+   */
+  async function pingOnline() {
+    if (typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine) return false;
+    try {
+      var ac = new AbortController();
+      var timer = setTimeout(function () { ac.abort(); }, PING_TIMEOUT_MS);
+      var r = await fetch(API_BASE + "/api/peaks?bbox=1,1,1.01,1.01", { signal: ac.signal });
+      clearTimeout(timer);
+      return !!r.ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * The Stage 4 "rolling window": call this on every position update (e.g.
+   * from a geolocation watchPosition callback). It decides on its own
+   * whether anything needs to happen — drifted > DRIFT_KM from the prepared
+   * centre, or nothing prepared yet — and if so, online-gates the attempt
+   * (skips + backs off when there's no real connectivity) before running
+   * the same prepareArea() Stage 2 already validated. Safe to call rapidly;
+   * it no-ops cheaply (one IndexedDB read) the rest of the time.
+   *
+   * center: { lat, lon }   opts: { radiusKm, keepRadiusKm, driftKm, onStatus }
+   * Returns a small result object; callers that want to know whether new
+   * data landed should check `result.fetched > 0`.
+   */
+  async function autoPrepareIfNeeded(center, opts) {
+    opts = opts || {};
+    var onStatus = opts.onStatus || function () {};
+    var driftKm = opts.driftKm || DRIFT_KM;
+
+    if (autoState.inFlight) return { skipped: "already-running" };
+    if (Date.now() < autoState.backoffUntil) {
+      return { skipped: "backoff", retryInMs: autoState.backoffUntil - Date.now() };
+    }
+
+    var prep = await getPrep();
+    var reason;
+    if (!prep) {
+      reason = "no-prep-yet";
+    } else {
+      var d = haversineKm(prep.center.lat, prep.center.lon, center.lat, center.lon);
+      if (d > driftKm) reason = "drifted-" + Math.round(d) + "km";
+    }
+    if (!reason) return { skipped: "not-needed" };
+
+    onStatus({ phase: "checking-online", reason: reason });
+    var online = await pingOnline();
+    if (!online) {
+      autoState.backoffMs = autoState.backoffMs ? Math.min(autoState.backoffMs * 2, BACKOFF_MAX_MS) : BACKOFF_BASE_MS;
+      autoState.backoffUntil = Date.now() + autoState.backoffMs;
+      onStatus({ phase: "offline", reason: reason, backoffMs: autoState.backoffMs });
+      return { skipped: "offline", reason: reason, backoffMs: autoState.backoffMs };
+    }
+
+    autoState.inFlight = true;
+    try {
+      var summary = await prepareArea(center, opts.radiusKm, { onStatus: onStatus, keepRadiusKm: opts.keepRadiusKm });
+      if (summary.aborted) {
+        autoState.backoffMs = autoState.backoffMs ? Math.min(autoState.backoffMs * 2, BACKOFF_MAX_MS) : BACKOFF_BASE_MS;
+        autoState.backoffUntil = Date.now() + autoState.backoffMs;
+      } else {
+        autoState.backoffMs = 0;
+        autoState.backoffUntil = 0;
+      }
+      return Object.assign({ reason: reason }, summary);
+    } finally {
+      autoState.inFlight = false;
+    }
+  }
+
   /** Read every stored peak covering a ~radiusKm disc around `center` — no network. */
   async function peaksForBox(center, radiusKm) {
-    var tileKeys = Tiles.tilesCoveringDisc(center.lat, center.lon, radiusKm || 100);
+    var tileKeys = Tiles.tilesCoveringDisc(center.lat, center.lon, radiusKm || DEFAULT_RADIUS_KM);
     var out = [], seen = {};
     for (var i = 0; i < tileKeys.length; i++) {
       var list = await peaksInTile(tileKeys[i]);
@@ -275,6 +362,8 @@
 
   return {
     prepareArea: prepareArea,
+    autoPrepareIfNeeded: autoPrepareIfNeeded,
+    pingOnline: pingOnline,
     peaksForBox: peaksForBox,
     getPrep: getPrep,
     allTiles: allTiles,

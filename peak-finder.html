@@ -49,21 +49,14 @@
         <div class="pkf-status-chip">
           <span class="pkf-chip" id="pkfDataChip">—</span>
           <span class="pkf-chip" id="pkfPosChip">—</span>
+          <span class="pkf-chip" id="pkfStaleChip" hidden>—</span>
         </div>
         <div class="pkf-reticle"></div>
 
         <div class="pkf-actionbar">
           <button class="pkf-btn-ghost pkf-hit" id="pkfCalibBtn" type="button">Calibrate</button>
-          <button class="pkf-btn-ghost pkf-hit" id="pkfPrepareToggleBtn" type="button">Prepare area</button>
           <button class="pkf-btn-ghost pkf-hit" id="pkfResetBtn" type="button">Reset correction</button>
         </div>
-      </div>
-
-      <!-- prepare banner -->
-      <div class="pkf-banner" id="pkfBanner" hidden>
-        <p id="pkfBannerText">No peaks prepared near you yet.</p>
-        <button class="pkf-btn-primary pkf-hit" id="pkfPrepareBtn" type="button" style="width:100%">Prepare this area (100 km)</button>
-        <div class="pkf-log" id="pkfPrepareLog" hidden></div>
       </div>
 
       <!-- detail sheet -->

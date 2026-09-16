@@ -1424,6 +1424,7 @@ body.fx-page-exit {
   border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 6px 11px;
   font-size: 11px; font-weight: 600; color: #fff;
 }
+.pkf-chip[hidden] { display: none; }
 .pkf-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #57c98a; box-shadow: 0 0 6px #57c98a; flex: none; }
 .pkf-chip .dot.warn { background: #e6a94b; box-shadow: 0 0 6px #e6a94b; }
 .pkf-chip .dot.bad { background: #e0715a; box-shadow: 0 0 6px #e0715a; }
@@ -1459,16 +1460,6 @@ body.fx-page-exit {
   bottom: calc(env(safe-area-inset-bottom) + 14px);
 }
 @media (min-width: 768px) { .pkf-actionbar { bottom: 18px; } }
-
-/* prepare banner */
-.pkf-banner {
-  position: absolute; left: 14px; right: 14px; bottom: 90px; z-index: 26;
-  background: rgba(12,16,20,0.86); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
-  padding: 14px 16px; pointer-events: auto;
-}
-@media (min-width: 768px) { .pkf-banner { bottom: 24px; max-width: 420px; left: 14px; } }
-.pkf-banner p { font-size: 0.85rem; color: #d7d9dc; margin-bottom: 10px; }
-.pkf-banner .pkf-log { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: #8b939d; white-space: pre-wrap; margin-top: 8px; max-height: 90px; overflow-y: auto; }
 
 /* detail sheet */
 .pkf-sheet {
