@@ -237,3 +237,48 @@ Send me what breaks — logs, screenshots, or just "the labels are off by about
 test harness), `SW_VERSION` bumped to `pf-stage3-v1` accordingly. If you test
 Stage 3 on a device that already visited this site under an older
 `SW_VERSION`, do the same unregister-and-hard-reload dance from Stage 2 first.
+
+## Coverage check — 2026-09-17
+
+User asked directly: does the app detect peaks everywhere (Dhauladhar, Zanskar,
+Ladakh, Nepal, Sikkim, Arunachal), or is it restricted to wherever we'd been
+testing (mostly Uttarakhand)? Checked the code first rather than assert:
+**`api/peaks.js` has no regional restriction anywhere** — `parseBbox()` is
+purely mathematical, `isMountainPeak()` filters on elevation/notability only.
+It queries OSM globally for whatever bbox it's given.
+
+Proved it live against the deployed API:
+
+| Region | Result |
+|---|---|
+| Dhauladhar, Himachal (McLeod Ganj) | ✅ live OSM, 12 peaks |
+| Zanskar | ✅ live OSM, 26 peaks |
+| Sikkim (Kangchenjunga) | ✅ live OSM, 72 peaks |
+| Arunachal Pradesh (Tawang) | ❌ → fixed → ✅ live OSM, 5 peaks (bilingual OSM tags, disputed-border area) |
+| Ladakh (Leh town, narrow bbox) | ❌ still falls back — see below |
+
+**Two real bugs found and fixed, both pushed:**
+1. `PER_ENDPOINT_TIMEOUT_MS` (12s) was too tight for genuinely dense/slow
+   Overpass responses — Arunachal and (partially) Ladakh were timing out and
+   silently falling back. Raised in two steps: 12s → 13.5s (fixed Arunachal)
+   → 20s + `vercel.json` maxDuration 30s → 45s (Overpass itself has
+   `[timeout:25]` baked into the query — no point the client aborting before
+   the server would).
+2. `api/_fallback-peaks.json` had **zero** Arunachal Pradesh entries — a real
+   gap in the degraded-path dataset. Added Kangto, Nyegi Kangsang, Gorichen
+   Peak, Gorichen II, Nyegyi Kangsang II.
+
+**Known remaining case, left as-is (working as designed, not a bug):** the
+exact bbox centred on Leh town consistently takes 30s+ even with the extended
+budget — confirmed with a cache-busted fresh request, not an edge-cache
+artifact. Chasing this further with even longer timeouts has a real cost (a
+40–60s wait on "Prepare this area" is bad UX even on success). This is
+precisely the scenario the fallback dataset exists for: it degrades to
+**Stok Kangri** — the actual best-known trekking peak immediately visible
+from Leh — rather than erroring or showing nothing. Correct designed
+behaviour, not a gap to keep closing with bigger timeouts.
+
+**Bottom line for coverage:** the app is not Himalaya-region-restricted in
+any way — it works anywhere OSM has peak data, which is effectively global.
+Some specific dense areas may take longer or briefly show the offline set
+while Overpass catches up; that degrades gracefully rather than failing.
