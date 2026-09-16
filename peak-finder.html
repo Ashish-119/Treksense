@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-src https://maps.google.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Peak Finder — TrekSense</title>
+  <meta name="description" content="Point your phone at the skyline and see the named Himalayan peaks around you — elevation, distance and bearing. Works offline once an area is prepared." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏔️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="pkf-page">
+
+  <header class="site-header" id="site-header"></header>
+
+  <main class="pkf-main">
+
+    <!-- ============ GATE ============ -->
+    <section class="pkf-gate" id="pkfGate">
+      <div class="pkf-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m2 20 5.5-10 3.5 6 4-8L22 20H2Z"/></svg>
+      </div>
+      <h1>Peak Finder</h1>
+      <p>Raise your phone at the skyline. Named Himalayan peaks — elevation, distance and
+        bearing — get pinned to the real ridge using your camera, compass and GPS.</p>
+
+      <div class="pkf-checklist" id="pkfChecklist"></div>
+
+      <button class="pkf-btn-primary" id="pkfStartBtn">Start Peak Finder</button>
+      <p class="pkf-gate-err" id="pkfGateErr"></p>
+      <p style="color:#8b939d;font-size:0.8rem">Best held upright, outdoors, away from cars and metal railings.</p>
+    </section>
+
+    <!-- ============ AR VIEW ============ -->
+    <section class="pkf-view" id="pkfView" hidden>
+      <video id="pkfCam" playsinline muted autoplay></video>
+      <svg class="pkf-leaders" id="pkfLeaders" preserveAspectRatio="none"></svg>
+
+      <div class="pkf-hud" id="pkfHud">
+        <div class="pkf-topbar">
+          <div class="pkf-heading-big" id="pkfHeadingBig">—<small>°</small></div>
+          <button class="pkf-chip pkf-chip-btn pkf-hit" id="pkfSensorChip" type="button"><span class="dot" id="pkfSensorDot"></span><span id="pkfSensorTxt">reading…</span></button>
+        </div>
+        <div class="pkf-compass-strip" id="pkfTicks"></div>
+        <div class="pkf-status-chip">
+          <span class="pkf-chip" id="pkfDataChip">—</span>
+          <span class="pkf-chip" id="pkfPosChip">—</span>
+        </div>
+        <div class="pkf-reticle"></div>
+
+        <div class="pkf-actionbar">
+          <button class="pkf-btn-ghost pkf-hit" id="pkfCalibBtn" type="button">Calibrate</button>
+          <button class="pkf-btn-ghost pkf-hit" id="pkfPrepareToggleBtn" type="button">Prepare area</button>
+          <button class="pkf-btn-ghost pkf-hit" id="pkfResetBtn" type="button">Reset correction</button>
+        </div>
+      </div>
+
+      <!-- prepare banner -->
+      <div class="pkf-banner" id="pkfBanner" hidden>
+        <p id="pkfBannerText">No peaks prepared near you yet.</p>
+        <button class="pkf-btn-primary pkf-hit" id="pkfPrepareBtn" type="button" style="width:100%">Prepare this area (100 km)</button>
+        <div class="pkf-log" id="pkfPrepareLog" hidden></div>
+      </div>
+
+      <!-- detail sheet -->
+      <div class="pkf-sheet" id="pkfSheet" role="dialog" aria-label="Peak detail">
+        <button class="pkf-close" id="pkfSheetClose" aria-label="Close">×</button>
+        <div class="pkf-grab"></div>
+        <h3 id="pkfSName">Peak</h3>
+        <div class="pkf-sub" id="pkfSSub">—</div>
+        <div class="pkf-big"><span id="pkfSFt">0</span> ft <small>/ <span id="pkfSM">0</span> m</small></div>
+        <div class="pkf-stats" id="pkfSStats"></div>
+        <div class="pkf-map"><iframe id="pkfSMap" title="Peak location" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+        <div class="pkf-acts">
+          <a class="primary" id="pkfSDirections" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+        </div>
+      </div>
+
+      <!-- calibration flow -->
+      <div class="pkf-calib" id="pkfCalib">
+        <button class="pkf-close" id="pkfCalibClose" aria-label="Close calibration">×</button>
+        <h4 id="pkfCalibTitle">Step 1 — pick the peak under the reticle</h4>
+        <p id="pkfCalibHint">Aim the phone so a peak you can identify sits under the centre crosshair, then find it in this list.</p>
+        <label style="display:block;margin-bottom:10px;font-size:0.8rem;color:#b9bcc2">
+          Your altitude in metres, if known (improves vertical accuracy)
+          <input type="number" id="pkfAltInput" placeholder="e.g. 2800" style="display:block;margin-top:5px;width:100%;background:#161c23;border:1px solid #262d36;border-radius:8px;color:#fff;padding:9px 11px;font:inherit" />
+        </label>
+        <div class="pkf-picklist" id="pkfCalibList"></div>
+      </div>
+      <div class="pkf-calib-tap-hint" id="pkfCalibTapHint" hidden>
+        <div class="pkf-tip">
+          <span id="pkfCalibTapText">Step 2 — without moving the phone, tap exactly where a different known peak appears on screen.</span>
+          <button type="button" id="pkfCalibTapCancel" style="display:block;margin-top:10px;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;padding:7px 12px;font:inherit;font-size:0.8rem;pointer-events:auto">Cancel calibration</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ERROR ============ -->
+    <section class="pkf-error" id="pkfError" hidden>
+      <div class="big">📡</div>
+      <h2>Peak Finder can't start</h2>
+      <p id="pkfErrorMsg">Something needed wasn't available.</p>
+      <button class="pkf-btn-ghost" id="pkfErrorRetry" type="button">Try again</button>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav" id="bottom-nav" aria-label="Primary"></nav>
+
+  <script src="js/tiles.js"></script>
+  <script src="js/peakstore.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/peakfinder.js"></script>
+</body>
+</html>

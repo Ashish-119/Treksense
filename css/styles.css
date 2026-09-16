@@ -395,18 +395,25 @@ input, select { font: inherit; color: inherit; }
   padding-bottom: env(safe-area-inset-bottom);
 }
 .bottom-nav a {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 600;
   color: var(--muted);
-  min-width: 84px;
   transition: color 0.2s;
 }
-.bottom-nav a svg { width: 24px; height: 24px; }
+.bottom-nav a span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bottom-nav a svg { width: 22px; height: 22px; }
 .bottom-nav a.active { color: var(--ink); }
 .bottom-nav a.active svg { color: var(--brand); }
 @media (min-width: 768px) { .bottom-nav { display: none; } }
@@ -1337,3 +1344,210 @@ body.fx-page-exit {
   width: 1px; height: 1px;
   opacity: 0;
 }
+
+/* ============================================================
+   PEAK FINDER — AR view (Stage 3)
+   Fixed dark HUD regardless of site theme — a camera viewfinder
+   needs high contrast on any background, not the light/dark toggle.
+   ============================================================ */
+.pkf-page { background: #0a0d11; }
+.pkf-main {
+  position: fixed; inset: 0; top: 64px; bottom: var(--nav-h);
+  background: #0a0d11; color: #e9eae5;
+  font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+  overflow: hidden;
+}
+@media (min-width: 768px) { .pkf-main { bottom: 0; } }
+
+/* ---- gate ---- */
+.pkf-gate {
+  position: absolute; inset: 0; z-index: 50;
+  display: flex; flex-direction: column; justify-content: center; gap: 16px;
+  padding: 32px 24px; overflow-y: auto;
+  background: radial-gradient(circle at 50% 20%, #1c2a3a, #0a0d11 70%);
+}
+.pkf-gate[hidden] { display: none; }
+.pkf-gate .pkf-badge {
+  width: 56px; height: 56px; border-radius: 16px; background: #d9a13b;
+  display: grid; place-items: center; margin-bottom: 4px;
+}
+.pkf-gate .pkf-badge svg { width: 30px; height: 30px; color: #14181d; }
+.pkf-gate h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+.pkf-gate p { color: #b9bcc2; font-size: 0.95rem; max-width: 46ch; line-height: 1.55; }
+.pkf-checklist { border: 1px solid #262d36; border-radius: 12px; overflow: hidden; margin: 4px 0; }
+.pkf-checklist > div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid #262d36; font-size: 0.82rem; }
+.pkf-checklist > div:first-child { border-top: 0; }
+.pkf-checklist .k { color: #8b939d; }
+.pkf-checklist .v.ok { color: #57c98a; } .pkf-checklist .v.bad { color: #e0715a; } .pkf-checklist .v.warn { color: #e6a94b; }
+.pkf-btn-primary {
+  background: #d9a13b; color: #14181d; border: 0; border-radius: 14px;
+  font-weight: 800; font-size: 1rem; padding: 15px 22px; cursor: pointer;
+  box-shadow: 0 10px 26px -8px rgba(217, 161, 59, 0.55);
+}
+.pkf-btn-primary:disabled { opacity: 0.5; box-shadow: none; }
+.pkf-btn-ghost {
+  background: rgba(255,255,255,0.06); color: #e9eae5; border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px; font-weight: 600; font-size: 0.85rem; padding: 10px 16px; cursor: pointer;
+}
+.pkf-btn-ghost.on { background: #d9a13b; color: #14181d; border-color: #d9a13b; }
+.pkf-gate-err { color: #e0715a; font-size: 0.85rem; }
+
+/* ---- AR view ---- */
+.pkf-view { position: absolute; inset: 0; }
+.pkf-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #1a2029; }
+.pkf-leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
+.pkf-leaders line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
+.pkf-leaders circle { fill: #fff; }
+
+.pkf-hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.pkf-hud .pkf-hit { pointer-events: auto; }
+
+.pkf-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  background: linear-gradient(#000a, transparent);
+}
+.pkf-heading-big { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.01em; text-shadow: 0 1px 4px #000; }
+.pkf-heading-big small { font-size: 0.75rem; font-weight: 600; color: #b9bcc2; margin-left: 4px; }
+
+.pkf-compass-strip { position: absolute; top: 62px; left: 0; right: 0; height: 26px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.pkf-compass-strip i { position: absolute; top: 8px; width: 1px; height: 7px; background: #ffffff88; }
+.pkf-compass-strip i.maj { top: 3px; height: 14px; background: #fff; }
+.pkf-compass-strip b { position: absolute; top: 13px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
+
+.pkf-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(12,16,20,0.62); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 6px 11px;
+  font-size: 11px; font-weight: 600; color: #fff;
+}
+.pkf-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #57c98a; box-shadow: 0 0 6px #57c98a; flex: none; }
+.pkf-chip .dot.warn { background: #e6a94b; box-shadow: 0 0 6px #e6a94b; }
+.pkf-chip .dot.bad { background: #e0715a; box-shadow: 0 0 6px #e0715a; }
+.pkf-chip-btn { border: 0; font-family: inherit; cursor: pointer; }
+
+.pkf-status-chip {
+  position: absolute; top: 100px; left: 14px; right: 14px;
+  display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+
+.pkf-reticle { position: absolute; top: 50%; left: 50%; width: 42px; height: 42px; transform: translate(-50%, -50%); opacity: 0.75; }
+.pkf-reticle::before, .pkf-reticle::after { content: ""; position: absolute; background: rgba(255,255,255,0.7); }
+.pkf-reticle::before { left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%); }
+.pkf-reticle::after { top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%); }
+
+/* labels */
+.pkf-label {
+  position: absolute; z-index: 14; pointer-events: auto; cursor: pointer;
+  transform: translate(-50%, -100%);
+  background: rgba(12,16,20,0.74); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.16); border-left: 2px solid #d9a13b; border-radius: 4px;
+  padding: 5px 9px; white-space: nowrap; color: #fff; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  text-align: left; appearance: none;
+}
+.pkf-label .nm { font-size: 12px; font-weight: 600; }
+.pkf-label .mt { font-size: 10px; color: rgba(255,255,255,0.72); margin-top: 1px; }
+.pkf-label.far { opacity: 0.82; }
+.pkf-label.far .nm { font-size: 11px; }
+
+/* mode/action bar */
+.pkf-actionbar {
+  position: absolute; left: 0; right: 0; z-index: 24; display: flex; justify-content: center; gap: 8px;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+}
+@media (min-width: 768px) { .pkf-actionbar { bottom: 18px; } }
+
+/* prepare banner */
+.pkf-banner {
+  position: absolute; left: 14px; right: 14px; bottom: 90px; z-index: 26;
+  background: rgba(12,16,20,0.86); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
+  padding: 14px 16px; pointer-events: auto;
+}
+@media (min-width: 768px) { .pkf-banner { bottom: 24px; max-width: 420px; left: 14px; } }
+.pkf-banner p { font-size: 0.85rem; color: #d7d9dc; margin-bottom: 10px; }
+.pkf-banner .pkf-log { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: #8b939d; white-space: pre-wrap; margin-top: 8px; max-height: 90px; overflow-y: auto; }
+
+/* detail sheet */
+.pkf-sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: #12171d; color: #fff; border-radius: 20px 20px 0 0;
+  border-top: 1px solid rgba(255,255,255,0.14);
+  transform: translateY(102%); transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+  padding: 8px 18px calc(env(safe-area-inset-bottom) + 20px); max-height: 78vh; overflow-y: auto;
+  pointer-events: auto;
+}
+.pkf-sheet.show { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .pkf-sheet { transition: none; } }
+.pkf-sheet .pkf-grab { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); margin: 6px auto 12px; }
+.pkf-sheet .pkf-close { position: absolute; top: 12px; right: 14px; background: none; border: 0; color: rgba(255,255,255,0.6); font-size: 22px; cursor: pointer; line-height: 1; }
+.pkf-sheet h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.01em; }
+.pkf-sheet .pkf-sub { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+.pkf-sheet .pkf-big { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800; font-size: 2.2rem; margin: 12px 0 2px; letter-spacing: -0.02em; }
+.pkf-sheet .pkf-big small { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.5); }
+.pkf-sheet .pkf-stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 4px; }
+.pkf-sheet .pkf-stats span {
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; padding: 4px 9px; border-radius: 3px;
+  background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.82); display: inline-flex; align-items: center; gap: 4px;
+}
+.pkf-sheet .pkf-stats span.warn { background: rgba(230,169,75,0.16); color: #e6a94b; }
+.pkf-sheet .pkf-stats svg { width: 12px; height: 12px; }
+.pkf-sheet .pkf-map { margin: 14px 0 4px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.12); }
+.pkf-sheet .pkf-map iframe { width: 100%; height: 160px; border: 0; display: block; }
+.pkf-sheet .pkf-acts { display: flex; gap: 10px; margin-top: 14px; }
+.pkf-sheet .pkf-acts button, .pkf-sheet .pkf-acts a {
+  flex: 1; text-align: center; font-family: inherit; font-size: 0.85rem; font-weight: 600;
+  padding: 11px 0; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);
+  background: transparent; color: #fff; cursor: pointer; text-decoration: none;
+}
+.pkf-sheet .pkf-acts .primary { background: #d9a13b; border-color: #d9a13b; color: #14181d; }
+
+/* calibration overlay */
+.pkf-calib {
+  position: absolute; inset: 0; z-index: 40; display: none; flex-direction: column;
+  background: rgba(8,11,14,0.92); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  padding: calc(env(safe-area-inset-top) + 18px) 18px 18px; pointer-events: auto;
+}
+.pkf-calib.show { display: flex; }
+.pkf-calib h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+.pkf-calib p { color: #b9bcc2; font-size: 0.88rem; margin-bottom: 12px; line-height: 1.5; }
+.pkf-calib .pkf-close { align-self: flex-end; background: none; border: 0; color: #b9bcc2; font-size: 22px; cursor: pointer; margin-bottom: 4px; }
+.pkf-picklist { overflow-y: auto; flex: 1; border: 1px solid #262d36; border-radius: 12px; }
+.pkf-picklist button {
+  display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid #1c222a;
+  color: #fff; font: inherit; font-size: 0.85rem; padding: 12px 14px; cursor: pointer;
+}
+.pkf-picklist button:first-child { border-top: 0; }
+.pkf-picklist button:hover, .pkf-picklist button:focus-visible { background: rgba(217,161,59,0.12); }
+.pkf-picklist small { display: block; color: #8b939d; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; margin-top: 2px; }
+.pkf-calib-tap-hint {
+  position: absolute; inset: 0; z-index: 39; pointer-events: auto; cursor: crosshair;
+}
+.pkf-calib-tap-hint .pkf-tip {
+  position: absolute; top: calc(env(safe-area-inset-top) + 16px); left: 16px; right: 16px;
+  background: rgba(12,16,20,0.85); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px;
+  padding: 12px 14px; font-size: 0.85rem; color: #fff; pointer-events: none;
+}
+.pkf-calib-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: #d9a13b; z-index: 41; pointer-events: none; }
+
+.pkf-error { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; text-align: center; padding: 32px; background: #0a0d11; color: #e9eae5; }
+.pkf-error[hidden] { display: none; }
+.pkf-error .big { font-size: 2.4rem; }
+.pkf-error p { color: #b9bcc2; max-width: 40ch; font-size: 0.92rem; }
+
+@media (prefers-reduced-motion: reduce) { .pkf-label { transition: none; } }
+
+/* Peak Finder sits on a fixed dark HUD regardless of site theme — the shared
+   bottom-nav needs a matching dark treatment here, not the theme-following one. */
+.pkf-page .bottom-nav {
+  background: rgba(10, 13, 17, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+.pkf-page .bottom-nav a { color: rgba(255, 255, 255, 0.55); }
+.pkf-page .bottom-nav a.active { color: #fff; }
+.pkf-page .bottom-nav a.active svg { color: #d9a13b; }

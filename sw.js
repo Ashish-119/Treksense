@@ -1,5 +1,5 @@
 /* ============================================================
-   TrekSense — sw.js   (Peak Finder — Stage 2 service worker)
+   TrekSense — sw.js   (Peak Finder service worker)
 
    - App shell: cache-first, precached on install.
    - /api/peaks: network-first, falls back to the last cached
@@ -9,13 +9,13 @@
      network and caching what it finds, so the rest of the site
      degrades gracefully too.
 
-   APP_SHELL is intentionally short right now — it covers the
-   Stage 2 test harness. Stage 3 adds peak-finder.html and its
-   scripts here once they exist. Bump SW_VERSION on any change so
-   clients pick up the new cache instead of a stale one.
+   Bump SW_VERSION on ANY change to an APP_SHELL file — sw.js itself
+   must change or the browser won't notice the file changed and will
+   keep serving the old cached copy forever (bit us once in Stage 2,
+   see BUILD-LOG).
    ============================================================ */
 
-const SW_VERSION = "pf-stage2-v2"; // bump this on ANY change to an APP_SHELL file — sw.js itself must change or the browser won't notice
+const SW_VERSION = "pf-stage3-v1";
 const SHELL_CACHE = "ts-shell-" + SW_VERSION;
 const API_CACHE = "ts-api-" + SW_VERSION;
 const RUNTIME_CACHE = "ts-runtime-" + SW_VERSION;
@@ -28,6 +28,8 @@ const APP_SHELL = [
   "/js/effects.js",
   "/js/tiles.js",
   "/js/peakstore.js",
+  "/peak-finder.html",
+  "/js/peakfinder.js",
   "/docs/spike/stage-2-store-test.html",
   "/docs/spike/stage-2-store-test.js",
 ];

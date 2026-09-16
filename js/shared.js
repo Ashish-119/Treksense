@@ -250,6 +250,7 @@ function headerHTML(active) {
       <a href="index.html#/explore" data-nav="explore" class="${active === "explore" ? "active" : ""}">Explore</a>
       <a href="index.html#/saved" data-nav="saved" class="${active === "saved" ? "active" : ""}">Saved</a>
       <a href="route.html" data-nav="route" class="${active === "route" ? "active" : ""}">Find Your Route</a>
+      <a href="peak-finder.html" data-nav="peaks" class="${active === "peaks" ? "active" : ""}">Peak Finder</a>
       <a href="plan.html" data-nav="plan" class="${active === "plan" ? "active" : ""}">Trek With Us</a>
     </nav>
     <div class="header-actions">
@@ -263,7 +264,8 @@ function bottomNavHTML(active) {
     <a href="index.html#/explore" data-nav="explore" class="${active === "explore" ? "active" : ""}">${ICONS.compass}<span>Explore</span></a>
     <a href="route.html" data-nav="route" class="${active === "route" ? "active" : ""}">${ICONS.pin}<span>Route</span></a>
     <a href="plan.html" data-nav="plan" class="${active === "plan" ? "active" : ""}">${ICONS.route}<span>With Us</span></a>
-    <a href="index.html#/saved" data-nav="saved" class="${active === "saved" ? "active" : ""}">${ICONS.bookmark}<span>Saved</span></a>`;
+    <a href="index.html#/saved" data-nav="saved" class="${active === "saved" ? "active" : ""}">${ICONS.bookmark}<span>Saved</span></a>
+    <a href="peak-finder.html" data-nav="peaks" class="${active === "peaks" ? "active" : ""}">${ICONS.peaks}<span>Peaks</span></a>`;
 }
 
 /* Theme toggle button (CSP-safe: no inline onclick, delegated so it works

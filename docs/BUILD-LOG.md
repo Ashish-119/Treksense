@@ -8,7 +8,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **0** | Foundations & sensor spike | 🟢 iOS done · Android deferred | 2026‑09‑11 | iPhone 17 passes indoor **and outdoor** (drift + known‑bearing, user‑reported "full green"). Android device + `WMM.COF` carried forward — see risk note below. See [`spike/STAGE-0.md`](spike/STAGE-0.md) · reference: [`spike/reading-the-spike.html`](spike/reading-the-spike.html) |
 | **1** | Backend + data layer (`/api/peaks?bbox=`) | ✅ done | 2026‑09‑12 | `api/peaks.js` + `api/_fallback-peaks.json` + `js/tiles.js` + `docs/PEAKS-API.md`. Tested against live Overpass and the fallback path via `scripts/dev-server.py`. |
 | **2** | On-device store + preparation | ✅ done | 2026‑09‑16 | `js/peakstore.js` (IndexedDB) + `sw.js` + `docs/spike/stage-2-store-test.html`. DoD verified in-browser, including a real bug found and fixed mid-test. |
-| **3** | AR projection engine | ⬜ not started | — | |
+| **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
 | **4** | Automatic rolling window | ⬜ not started | — | |
 | **5** | Fallbacks, polish, a11y | ⬜ not started | — | |
 | **6** | Field test → harden → launch | ⬜ not started | — | |
@@ -138,3 +138,102 @@ one origin, no CORS — matches the `connect-src 'self'` CSP already in place.
   `<your-project>.vercel.app` instead of the old `ashish-119.github.io` links.
 - The historical GitHub Pages deployment (if still enabled) is a stale mirror as of
   this date — fine to leave on or turn off, doesn't affect the app.
+
+## Stage 3 — what shipped, and why this handoff is different from Stages 1–2
+
+Stage 1 I could `curl`-verify myself. Stage 2 needed a browser but I could at
+least reason about IndexedDB transactions precisely. Stage 3 needs a live
+camera, a live compass, live GPS, and a phone held outdoors — **none of which
+exist in this environment**. Everything below is careful code review and
+cross-checking against the Stage 0 spike's already-validated sensor logic, not
+execution. Treat your first real test as the actual first run, same as Stage 2 —
+except this time expect to find more than one thing, not because the code is
+careless but because there's simply more surface area (camera + 3 sensors +
+projection math + a two-point calibration flow) than any prior stage.
+
+**Shipped:**
+- **`peak-finder.html`** + **`js/peakfinder.js`** — the real AR view. Camera
+  feed, compass HUD, live peak labels (bearing → x, elevation angle → y with
+  earth curvature + refraction, matching the blueprint's geometry figure
+  exactly), tap-to-detail sheet with an embedded map, drag-to-align field
+  correction (persisted per device), and a two-point FOV calibration flow.
+- **Sensor fusion is ported, not reinvented** — the exact heading-source
+  detection (`webkitCompassHeading` true vs W3C absolute-magnetic vs
+  unreliable-relative), the same coarse declination stand-in, and the same EMA
+  smoothing approach from `docs/spike/sensor-spike.html`, which *was*
+  validated on your iPhone 17. Default smoothing α is still the iOS-only
+  provisional value from D‑0.1 (Stage 0) — Android's number isn't in yet, so
+  this default may need revisiting once you've collected it.
+- **Nav wiring** (per your instruction, added to Stage 3's checklist in the
+  blueprint): "Peak Finder" is now a real bottom-nav / header-nav item across
+  the whole site, not a hidden URL. `js/shared.js`, `css/styles.css`,
+  `index.html` footer updated (same pattern as the original ask — this had
+  been reverted once already, see memory).
+- **Deliberately not built** (matches the plan's own stage boundaries, not
+  cut corners): no map-mode fallback for denied camera (that's Stage 5 t5‑1),
+  no manual-location entry for denied GPS (Stage 5 t5‑3), no background-tab
+  camera release (Stage 5 t5‑6). Denied permissions currently just show a
+  plain error screen with a retry button. This is intentional scoping, not an
+  oversight — flagging so it's not mistaken for one.
+
+**Two real bugs caught during review, fixed before handoff (not found by
+testing — nothing here has run yet):**
+1. **Calibration math was reading the heading at the wrong moment.** The
+   two-point FOV calibration needs the compass reading from the instant peak A
+   was centred in the reticle — the first draft re-read the *current* heading
+   at the end of the whole 3-step flow instead, silently assuming the phone
+   never moved in between. Fixed to capture and store the reading at step 1.
+2. **The gate and error screens had a CSS bug that would have made them
+   permanently visible or permanently stuck.** `.pkf-gate` and `.pkf-error`
+   both set `display: flex` unconditionally; author CSS beats the browser's
+   default `[hidden]{display:none}`, so toggling the `hidden` property from
+   JS would have done nothing. Concretely: the error screen would have shown
+   on *every* page load overlapping the gate, and the gate would never have
+   disappeared after a successful boot, overlapping the live AR view. Added
+   explicit `[hidden]{display:none}` overrides for both. Worth remembering as
+   a pattern for the rest of this build: any element toggled via the `hidden`
+   attribute must never get its own unconditional `display` in CSS.
+
+**The calibration flow's math, for the record** (so it's checkable): centring
+peak A gives one reading; without moving the phone, tapping peak B's on-screen
+position at fraction `x₂` of the width gives a second. The heading/offset terms
+cancel algebraically between the two, leaving
+`hFOV = normalize180(trueBearing_B − trueBearing_A) / (x₂ − 0.5)` — the field
+of view is recovered from the angular separation of two known peaks and their
+relative screen positions alone. Guards against a near-zero denominator (peaks
+too close together on screen) and an out-of-range result (25°–100°).
+
+## Stage 3 — manual test plan (yours — nothing here can run without a phone)
+
+1. **Load the page.** `peak-finder.html` should open from the bottom nav
+   ("Peaks" → now "Peak Finder"). Preflight checklist should read all green
+   outdoors on a real phone over HTTPS (Vercel or `localhost`).
+2. **Start it.** Grant motion/orientation (iOS gesture), camera, location in
+   that order. Camera feed should appear with a compass ribbon and heading
+   readout on top.
+3. **If no peaks are prepared for your area**, the banner should appear
+   automatically — tap "Prepare this area" and watch the same per-tile log
+   behaviour as the Stage 2 harness (this reuses `PeakStore.prepareArea()`
+   unchanged).
+4. **Pan slowly across the skyline.** Labels should track smoothly, nearest
+   peak on top when they'd overlap, with a leader line down to the summit.
+5. **Tap a label** → detail sheet should show real elevation/distance/bearing
+   and an embedded map.
+6. **Try the field correction**: drag the camera view — labels should shift
+   with your finger (not the reverse). Tap "Reset correction" to zero it.
+7. **Try calibration**: tap "Calibrate," centre a peak you can identify in the
+   reticle, pick it from the list, then — without moving the phone — tap where
+   a second known peak appears and pick *that* from the list. Watch for the
+   "calibrated — field of view ≈ N°" toast. A wildly wrong number (very close
+   to the 25° or 100° clamp) means something about the pick was off — redo it.
+8. **Deny a permission on purpose** (camera or location) to confirm the error
+   screen appears cleanly and "Try again" recovers.
+
+Send me what breaks — logs, screenshots, or just "the labels are off by about
+30°" — and we'll work through it the same way we did Stages 0 and 2.
+
+**Also:** `sw.js`'s `APP_SHELL` now includes `peak-finder.html` and
+`js/peakfinder.js` (the real page can open offline too, not just the Stage 2
+test harness), `SW_VERSION` bumped to `pf-stage3-v1` accordingly. If you test
+Stage 3 on a device that already visited this site under an older
+`SW_VERSION`, do the same unregister-and-hard-reload dance from Stage 2 first.
