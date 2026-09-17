@@ -27,6 +27,11 @@
   var DEFAULT_KEEP_RADIUS_KM = 250;                // evict tiles whose centre is farther than this from prep centre
   var DEFAULT_RADIUS_KM = 100;                     // the ~100 km disc the blueprint keeps prepared around the user
   var API_BASE = "";                               // same-origin; Stage 1's /api/peaks lives on this domain
+  var TILE_FETCH_TIMEOUT_MS = 20000;               // give up on one tile and move to the next rather than hang the
+                                                    // whole prepare — observed some browser/SW-mediated fetches to
+                                                    // /api/peaks fail near-instantly even though the server itself
+                                                    // always answers when hit directly; bounding this keeps a stuck
+                                                    // tile from stalling the other 20+ tiles behind it either way.
 
   /* ---- Stage 4: automatic rolling window ---- */
   var DRIFT_KM = 15;                    // re-centre once the user is this far from the prepared centre
@@ -191,7 +196,14 @@
       onStatus({ phase: "fetching", tileKey: key, index: j, total: toFetch.length });
       try {
         var url = API_BASE + "/api/peaks?bbox=" + [bbox.s, bbox.w, bbox.n, bbox.e].join(",");
-        var r = await fetch(url);
+        var ac = new AbortController();
+        var tileTimer = setTimeout(function () { ac.abort(); }, TILE_FETCH_TIMEOUT_MS);
+        var r;
+        try {
+          r = await fetch(url, { signal: ac.signal });
+        } finally {
+          clearTimeout(tileTimer);
+        }
         if (!r.ok) throw new Error("HTTP " + r.status);
         var data = await r.json();
         await upsertPeaks(data.peaks, key);

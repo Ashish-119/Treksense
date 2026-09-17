@@ -359,3 +359,67 @@ logic, same as Stage 2.
    empty store, a status chip near the top should read something like
    `"no peaks prepared yet — waiting for a connection"`, then automatically
    flip to `"prepared just now · here"` without you tapping anything.
+
+## Stage 4 — bug found in real testing: ping was measuring Overpass's mood
+
+Your first rolling-window run (real browser, real internet) showed
+`pingOnline()` timing out and the gate reporting "offline" even though the
+connection was fine. Root cause: the ping hit `/api/peaks?bbox=1,1,1.01,1.01`
+on the theory that a tiny bbox would resolve fast — wrong, because
+`/api/peaks` *always* calls Overpass regardless of bbox size, and that
+session Overpass was taking 20–26 s to answer. The 6 s ping timeout fired
+first every time. Your Network-panel screenshot showed the exact mechanism:
+the ping fetch shown as "(cancelled)" at 6.01 s, right next to the service
+worker's own `/api/peaks` fetch for the same tile finally landing a 200 at
+23 s — same slow backend, two different callers, only one of them timing out.
+
+Fix: a new, dependency-free endpoint, **`api/peaks.js`'s sibling
+`api/ping.js`**, that does nothing but echo `{ ok: true, t: Date.now() }`
+with no Overpass call at all. `pingOnline()` now hits `/api/ping` instead.
+`sw.js` treats `/api/ping` as network-only (never cache-fallback — a stale
+cached "ok" would be actively wrong for an online-gate). `scripts/dev-server.py`
+got a matching route. Verified locally: old approach ~26 s, new one ~0.01 s.
+Pushed and confirmed live on Vercel. `SW_VERSION` → `pf-stage4-v2`.
+
+## Stage 4 — bug found in real testing: fast browser-side 503s on tile fetches
+
+Your next run (Delhi → Panipat) showed Delhi fully succeed (25/25 tiles,
+confirming the ping fix worked) but Panipat's prepare fail completely — all
+10 needed tiles came back `503` in DevTools' Network panel, each in
+0–5 ms. That's too fast to be a real server response, and it was: I curled
+`/api/peaks` directly against the live Vercel deployment with the exact same
+10 bboxes Panipat needed, and all 10 came back `200` (a couple slow, via the
+30 s Overpass-timeout → fallback path, but never a failure). The server
+never once returned a 503 for these tiles.
+
+That means the 503s in your browser were synthesized entirely by `sw.js`'s
+own `networkFirst()` catch block — the underlying browser `fetch()` call
+itself was erroring near-instantly, for a reason I couldn't pin down without
+live browser access (candidates: some browser/SW-level cap on how long a
+`respondWith()` promise is allowed to hang, or interference from an unrelated
+extension visible in your Network panel — `tag_assistant_api_bin.js`,
+`dapp-interface.js`). I can't confirm which, and chasing it further isn't
+productive without a way to inspect it live.
+
+What held up correctly regardless: the Stage 2 eviction-safety fix. Delhi's
+25 prepared tiles were completely untouched by Panipat's total failure, all
+10 Panipat tiles were correctly left `stale` rather than corrupted, the prep
+pointer stayed at Delhi, and the exponential backoff kicked in and counted
+down predictably through the rest of the route.
+
+Fix (pragmatic, not root-cause): each per-tile fetch inside `prepareArea()`
+now has its own client-side timeout (`TILE_FETCH_TIMEOUT_MS = 20000`, via
+`AbortController`), so a tile that's going to fail, fails on a bound I
+control rather than whatever opaque browser mechanism was producing the fast
+failures. This doesn't explain the 0–5 ms 503s, but it makes the prepare
+loop's worst case deterministic (max ~20 s per stuck tile, not indefinite)
+regardless of cause. `SW_VERSION` → `pf-stage4-v3` (`peakstore.js` changed).
+
+**Ask for you:** re-run the same Delhi → Panipat step on the rolling-window
+harness once this is live. If the 503s were a one-off (flaky extension,
+transient browser hiccup), it should just work now. If they recur, watch
+whether they still resolve in 0–5 ms (still not-a-real-timeout, needs more
+digging) or now take closer to 20 s (my timeout is the one firing, and we
+know the true cause is upstream of my code, most likely that extension
+interference — worth a re-test in an Incognito window with extensions off
+to confirm).
