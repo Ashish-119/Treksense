@@ -481,3 +481,34 @@ results:
   logs (44 peaks in one tile, 20+ in others). Already documented as a known
   characteristic in the 2026‑09‑17 coverage-check section above; not
   something to keep chasing tile-by-tile.
+
+## Stage 4 — the concurrency fix needed its own fix
+
+First real run on the new Kathmandu → Khumbu route (dense real peak data —
+71 peaks in one tile, 86 in another) surfaced a problem in the speed fix
+itself: 14 of 25 tiles on the first waypoint, 12 of 19 on the second, failed
+with `"signal is aborted without reason"` — every single one at exactly
+`20.00s` in the Network panel, not near-instant like the original mystery
+bug. That timing is the tell: `TILE_FETCH_TIMEOUT_MS` was 20000, but
+`api/peaks.js`'s own comment says its worst case is `2 endpoints × 20s =
+40s` before it even reaches the fallback. The client was giving up before
+the server had finished trying. No data corruption (failed tiles were
+honestly marked `stale`, never falsely marked `prepared`), but real
+coverage gaps — tiles that would have returned genuine peak data got cut
+off mid-flight.
+
+Likely made worse by the concurrency fix itself: `TILE_FETCH_CONCURRENCY`
+was 5, meaning up to 5 simultaneous Overpass queries could fire from Vercel
+at once. The public Overpass API's documented fair-use policy caps
+concurrent requests per client at ~2 — plausible that going to 5 tripped
+that throttling and made individual requests slower, not faster.
+
+Fix, both in `js/peakstore.js`: `TILE_FETCH_TIMEOUT_MS` 20000 → **42000**
+(comfortably above the server's documented 40s worst case, just under
+`vercel.json`'s 45s hard cap); `TILE_FETCH_CONCURRENCY` 5 → **2** (matching
+Overpass's stated fair-use limit). `SW_VERSION` → `pf-stage4-v6`.
+
+**Ask for you:** re-run the same Nepal route (Reset route + clear store
+first, since Kathmandu's tiles are now marked `stale`). Expect fewer aborts
+this time; any that remain should now represent genuinely stuck requests
+worth a closer look, not premature cutoffs.

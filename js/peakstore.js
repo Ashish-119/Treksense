@@ -27,15 +27,19 @@
   var DEFAULT_KEEP_RADIUS_KM = 250;                // evict tiles whose centre is farther than this from prep centre
   var DEFAULT_RADIUS_KM = 100;                     // the ~100 km disc the blueprint keeps prepared around the user
   var API_BASE = "";                               // same-origin; Stage 1's /api/peaks lives on this domain
-  var TILE_FETCH_TIMEOUT_MS = 20000;               // give up on one tile and move to the next rather than hang the
-                                                    // whole prepare — observed some browser/SW-mediated fetches to
-                                                    // /api/peaks fail near-instantly even though the server itself
-                                                    // always answers when hit directly; bounding this keeps a stuck
-                                                    // tile from stalling the other 20+ tiles behind it either way.
-  var TILE_FETCH_CONCURRENCY = 5;                  // fetch this many tiles in parallel rather than one at a time —
-                                                    // Overpass latency is mostly wait time, not CPU, so a small pool
-                                                    // cuts a 25-tile first-time prepare from ~25x one tile's latency
-                                                    // down to roughly a fifth of that.
+  var TILE_FETCH_TIMEOUT_MS = 42000;               // give up on one tile and move to the next rather than hang the
+                                                    // whole prepare forever. Must stay ABOVE api/peaks.js's own
+                                                    // worst case (2 Overpass endpoints x 20s = 40s, see that file's
+                                                    // PER_ENDPOINT_TIMEOUT_MS comment) — a shorter client timeout
+                                                    // was cutting off real, slow-but-successful responses before the
+                                                    // server even finished trying its second endpoint (seen live:
+                                                    // ~14/25 tiles killed at exactly 20.00s in the Network panel).
+                                                    // 42s leaves a small margin under vercel.json's 45s hard cap.
+  var TILE_FETCH_CONCURRENCY = 2;                  // fetch this many tiles in parallel — kept modest because the
+                                                    // public Overpass API's fair-use policy caps concurrent requests
+                                                    // per client at ~2; going higher (tried 5) plausibly tripped that
+                                                    // throttling server-side and made individual requests slower,
+                                                    // not faster, in live testing.
 
   /* ---- Stage 4: automatic rolling window ---- */
   var DRIFT_KM = 15;                    // re-centre once the user is this far from the prepared centre
