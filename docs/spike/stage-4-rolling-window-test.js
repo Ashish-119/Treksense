@@ -17,7 +17,7 @@ const ROUTE = [
   { name: "Sankri", lat: 31.05, lon: 78.28 },
 ];
 
-const state = { idx: -1, running: false };
+const state = { idx: -1, running: false, outcomes: [] }; // outcomes[i]: "ok" | "skipped" | "bad", per waypoint
 
 const log = (msg) => { const el = $("log"); el.textContent = (el.textContent === "idle — tap \"Next waypoint\" to start" ? "" : el.textContent + "\n") + msg; el.scrollTop = el.scrollHeight; };
 const fmtAge = (ms) => {
@@ -38,8 +38,12 @@ function row(k, v, cls) { return `<div><span class="k">${k}</span><span class="v
 
 function renderRoute() {
   $("routeChips").innerHTML = ROUTE.map((wp, i) => {
-    const cls = i < state.idx ? "done" : i === state.idx ? "now" : "";
-    return `<span class="wp ${cls}">${i + 1}. ${wp.name}</span>`;
+    // "now" (currently being stepped to) beats a stale outcome from a prior run;
+    // otherwise colour by what actually happened here, not just "did we visit it" —
+    // a chip that visually says "done" for a step that was skipped/backed-off is misleading.
+    const cls = i === state.idx ? "now" : state.outcomes[i] || "";
+    const mark = state.outcomes[i] === "bad" ? " ✗" : state.outcomes[i] === "skipped" ? " ⋯" : state.outcomes[i] === "ok" ? " ✓" : "";
+    return `<span class="wp ${cls}">${i + 1}. ${wp.name}${mark}</span>`;
   }).join("");
 }
 
@@ -80,11 +84,15 @@ async function step() {
     },
   });
 
-  if (result.skipped === "not-needed") log(`  skipped: not-needed (still within 15 km of the prepared centre)`);
-  else if (result.skipped === "offline") log(`  skipped: offline (backoff ${Math.round(result.backoffMs / 1000)}s)`);
-  else if (result.skipped === "backoff") log(`  skipped: backoff, ${Math.round(result.retryInMs / 1000)}s remaining`);
-  else if (result.skipped === "already-running") log(`  skipped: already running`);
-  else log(`  done — fetched ${result.fetched}, failed ${result.failed}, evicted ${result.evicted}, +${result.peaksAdded} peaks${result.aborted ? " ⚠ aborted (nothing changed)" : ""}`);
+  if (result.skipped === "not-needed") { log(`  skipped: not-needed (still within 15 km of the prepared centre)`); state.outcomes[state.idx] = "ok"; }
+  else if (result.skipped === "offline") { log(`  skipped: offline (backoff ${Math.round(result.backoffMs / 1000)}s)`); state.outcomes[state.idx] = "skipped"; }
+  else if (result.skipped === "backoff") { log(`  skipped: backoff, ${Math.round(result.retryInMs / 1000)}s remaining`); state.outcomes[state.idx] = "skipped"; }
+  else if (result.skipped === "already-running") { log(`  skipped: already running`); state.outcomes[state.idx] = "skipped"; }
+  else {
+    log(`  done — fetched ${result.fetched}, failed ${result.failed}, evicted ${result.evicted}, +${result.peaksAdded} peaks${result.aborted ? " ⚠ aborted (nothing changed)" : ""}`);
+    state.outcomes[state.idx] = result.aborted ? "bad" : "ok";
+  }
+  renderRoute();
 
   await refreshPrep();
   await refreshTiles();
@@ -116,6 +124,7 @@ $("resetBtn").addEventListener("click", async () => {
   await PeakStore.clearAll();
   state.idx = -1;
   state.running = false;
+  state.outcomes = [];
   $("log").textContent = "idle — tap \"Next waypoint\" to start";
   renderRoute();
   await refreshPrep();

@@ -35,7 +35,9 @@
   .tag.prepared { background:#1c3b2c; color:var(--good); } .tag.stale{background:#3a2820;color:var(--warn);} .tag.fetching{background:#233044;color:#7fb2e6;}
   .route { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .route .wp { padding:4px 9px; border-radius:12px; border:1px solid var(--line); font-size:11px; color:var(--dim); }
-  .route .wp.done { border-color:var(--good); color:var(--good); }
+  .route .wp.ok { border-color:var(--good); color:var(--good); }
+  .route .wp.skipped { border-color:var(--warn); color:var(--warn); }
+  .route .wp.bad { border-color:var(--bad); color:var(--bad); }
   .route .wp.now { border-color:var(--accent); color:var(--accent); font-weight:700; }
   .steps { list-style:none; counter-reset:s; }
   .steps li { counter-increment:s; padding:5px 0 5px 24px; position:relative; font-size:12.5px; }
