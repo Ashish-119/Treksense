@@ -423,3 +423,61 @@ digging) or now take closer to 20 s (my timeout is the one firing, and we
 know the true cause is upstream of my code, most likely that extension
 interference — worth a re-test in an Incognito window with extensions off
 to confirm).
+
+## Stage 4 — re-test against live Vercel, plus a real latency fix
+
+Testing `localhost:8000` in Incognito produced a different, unrelated
+failure: every tile came back `(offline dataset)`. Direct `curl` from that
+machine to `overpass-api.de:443` returned **connection refused** on all four
+IPs (v4 and v6) while `google.com` and `treksense.vercel.app` both answered
+instantly — the local network simply couldn't reach Overpass at that moment.
+`scripts/dev-server.py` calls Overpass directly from whatever machine runs
+it, so this was a local-network condition, not a code path shared with the
+deployed site (Vercel's serverless functions reach Overpass from Vercel's
+own network, not yours). Re-tested against the live site instead
+(`https://treksense.vercel.app/docs/spike/stage-4-rolling-window-test.html`,
+phone + laptop, both in real conditions) and got two useful, different
+results:
+
+- **The `TILE_FETCH_TIMEOUT_MS` fix is confirmed working.** Failures now show
+  up as `"Fetch is aborted"` / `"signal is aborted without reason"` — a
+  clean, bounded timeout — instead of the old instant fake `503`. Exactly
+  the intended behavior: a tile that can't complete now fails predictably
+  instead of hanging or lying about the reason.
+- **New, legitimate finding: a fresh area took 20–40 s to fully prepare**,
+  and you asked for this to feel closer to instant, since Peak Finder's
+  whole premise is "prepare before you lose signal." Root cause was two
+  compounding design choices in `prepareArea()`, not a bug: (1) tiles were
+  fetched in whatever order the grid happened to list them, not ordered by
+  distance from the user, so the tile someone is actually standing in could
+  be fetched last; (2) tiles were fetched **one at a time**, so a 25-tile
+  first-time prepare paid the full sum of 25 round-trips serially, and Stage
+  4 field data has repeatedly shown individual Overpass calls can genuinely
+  take several seconds to tens of seconds.
+
+  Fix, both in `js/peakstore.js`'s `prepareArea()`: **(a)** `toFetch` is now
+  sorted nearest-tile-first via a new `tileCenterDistanceKm()` helper, so
+  the tile under the user's feet is requested before the outer edge of the
+  100 km disc; **(b)** replaced the sequential loop with a small worker pool
+  (`TILE_FETCH_CONCURRENCY = 5`) — up to 5 tiles in flight at once, each
+  worker pulling the next (already nearest-first) tile off the queue as it
+  frees up. This is a genuine architectural change, not new product surface
+  — same public API, same progress events, same eviction-safety guarantee
+  (still evicts/finalizes only when at least one tile actually succeeded).
+  Expected effect: wall-clock time for a first-time area drops roughly by
+  the concurrency factor, and the *useful* part — data for right where the
+  user is — should be ready well before the rest of the disc finishes.
+  `SW_VERSION` → `pf-stage4-v4` (`peakstore.js` changed again).
+
+- **Also asked: why do so many tiles show `0 peaks (offline dataset)`?**
+  Not a bug — `api/_fallback-peaks.json` is a curated list of 132 named
+  Himalayan peaks, not an area-complete dataset. `(offline dataset)` only
+  appears on a tile where Overpass failed *for that specific request* and
+  the fallback kicked in; most individual 0.5° tiles, even genuinely
+  mountainous ones, simply don't contain one of those 132 named peaks in
+  their exact grid cell. It's a safety net for "give a real, correct answer
+  when the live provider is down," not full coverage — when Overpass
+  actually answers (no tag), results are much richer, as seen in the same
+  logs (44 peaks in one tile, 20+ in others). Already documented as a known
+  characteristic in the 2026‑09‑17 coverage-check section above; not
+  something to keep chasing tile-by-tile.

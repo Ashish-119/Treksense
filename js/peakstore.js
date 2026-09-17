@@ -32,6 +32,10 @@
                                                     // /api/peaks fail near-instantly even though the server itself
                                                     // always answers when hit directly; bounding this keeps a stuck
                                                     // tile from stalling the other 20+ tiles behind it either way.
+  var TILE_FETCH_CONCURRENCY = 5;                  // fetch this many tiles in parallel rather than one at a time —
+                                                    // Overpass latency is mostly wait time, not CPU, so a small pool
+                                                    // cuts a 25-tile first-time prepare from ~25x one tile's latency
+                                                    // down to roughly a fifth of that.
 
   /* ---- Stage 4: automatic rolling window ---- */
   var DRIFT_KM = 15;                    // re-centre once the user is this far from the prepared centre
@@ -144,6 +148,12 @@
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
+  function tileCenterDistanceKm(tileKey, center) {
+    var bb = Tiles.tileKeyToBbox(tileKey);
+    var cLat = (bb.s + bb.n) / 2, cLon = (bb.w + bb.e) / 2;
+    return haversineKm(center.lat, center.lon, cLat, cLon);
+  }
+
   /** Drop tiles whose centre has fallen more than keepRadiusKm from the new prep centre. */
   async function evictOutside(center, keepRadiusKm) {
     var db = await openDB();
@@ -186,11 +196,20 @@
         toFetch.push(tileKeys[i]);
       }
     }
+
+    // Nearest-to-the-user first: on a fresh area the tile someone is actually
+    // standing in should land before the outer edge of the 100 km disc, so
+    // the AR view has usable data for "right here" as soon as possible even
+    // while the rest keeps loading behind it.
+    toFetch.sort(function (a, b) {
+      return tileCenterDistanceKm(a, center) - tileCenterDistanceKm(b, center);
+    });
+
     onStatus({ phase: "start", totalTiles: tileKeys.length, toFetch: toFetch.length });
 
     var fetched = 0, failed = 0, totalPeaks = 0;
-    for (var j = 0; j < toFetch.length; j++) {
-      var key = toFetch[j];
+
+    async function fetchOne(key, j) {
       var bbox = Tiles.tileKeyToBbox(key);
       await putTile({ tileKey: key, bbox: bbox, status: "fetching", preparedAt: now, peakCount: 0, datasetVersion: DATASET_VERSION });
       onStatus({ phase: "fetching", tileKey: key, index: j, total: toFetch.length });
@@ -221,6 +240,23 @@
         onStatus({ phase: "tile-error", tileKey: key, index: j, total: toFetch.length, error: String((e && e.message) || e) });
       }
     }
+
+    // A small worker pool, not one fetch at a time: each worker pulls the next
+    // tile off the (already nearest-first sorted) queue as soon as it's free,
+    // so up to TILE_FETCH_CONCURRENCY tiles are in flight together.
+    var nextIndex = 0;
+    function nextTileIndex() { return nextIndex++; }
+    var workerCount = Math.min(TILE_FETCH_CONCURRENCY, toFetch.length);
+    var workers = [];
+    for (var w = 0; w < workerCount; w++) {
+      workers.push((async function worker() {
+        var idx;
+        while ((idx = nextTileIndex()) < toFetch.length) {
+          await fetchOne(toFetch[idx], idx);
+        }
+      })());
+    }
+    await Promise.all(workers);
 
     // A prepare attempt that tried to fetch tiles and got zero successes (offline,
     // provider down, bogus coordinates…) must NOT touch what's already stored —
