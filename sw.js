@@ -15,7 +15,7 @@
    see BUILD-LOG).
    ============================================================ */
 
-const SW_VERSION = "pf-stage4-v1";
+const SW_VERSION = "pf-stage4-v2";
 const SHELL_CACHE = "ts-shell-" + SW_VERSION;
 const API_CACHE = "ts-api-" + SW_VERSION;
 const RUNTIME_CACHE = "ts-runtime-" + SW_VERSION;
@@ -61,6 +61,12 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname === "/api/peaks") {
     event.respondWith(networkFirst(req, API_CACHE));
+    return;
+  }
+  if (url.pathname === "/api/ping") {
+    // Never serve this from cache — a stale cached "ok" would make the
+    // Stage 4 online-gate believe it's connected when it genuinely isn't.
+    event.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }
 

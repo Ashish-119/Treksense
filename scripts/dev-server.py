@@ -147,6 +147,8 @@ class Handler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path.rstrip("/") == "/api/peaks":
             return self._peaks(urllib.parse.parse_qs(parsed.query))
+        if parsed.path.rstrip("/") == "/api/ping":
+            return self._json(200, {"ok": True, "t": int(datetime.datetime.now().timestamp() * 1000)})
         return super().do_GET()
 
     def _peaks(self, qs):

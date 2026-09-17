@@ -236,18 +236,20 @@
 
   /**
    * A small, cheap same-origin request that exercises the real network path
-   * (browser → Vercel → Overpass), not just `navigator.onLine` (which only
-   * reflects the OS network interface, not real reachability — a phone on
-   * Wi-Fi with no internet still reports onLine:true). Queries a 1x1km ocean
-   * box (guaranteed no peaks, resolves fast either way) so it's cheap to run
-   * before committing to a full multi-tile prepare.
+   * (browser → Vercel), not just `navigator.onLine` (which only reflects the
+   * OS network interface, not real reachability — a phone on Wi-Fi with no
+   * internet still reports onLine:true). Hits /api/ping specifically — NOT
+   * /api/peaks — because /api/peaks always calls Overpass regardless of bbox
+   * size, so its latency reflects Overpass's mood, not device connectivity;
+   * that mismatch used to make this report "offline" during perfectly good
+   * connections whenever Overpass was merely slow.
    */
   async function pingOnline() {
     if (typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine) return false;
     try {
       var ac = new AbortController();
       var timer = setTimeout(function () { ac.abort(); }, PING_TIMEOUT_MS);
-      var r = await fetch(API_BASE + "/api/peaks?bbox=1,1,1.01,1.01", { signal: ac.signal });
+      var r = await fetch(API_BASE + "/api/ping", { signal: ac.signal, cache: "no-store" });
       clearTimeout(timer);
       return !!r.ok;
     } catch (e) {
