@@ -1,20 +1,25 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 
-// Real places, roughly Delhi -> Sankri, ~290 km straight-line. Spacing is
-// mostly >15 km so most steps should trigger the drift detector — deliberately
-// exercising the trigger logic at nearly every step rather than mostly no-ops.
+// Real places, Kathmandu into the Khumbu (Everest region), Nepal — ~155 km
+// straight-line, genuinely fresh ground for this store (never exercised by
+// any prior Stage 4 test) and one of the densest real peak areas OSM has
+// (Everest, Lhotse, Nuptse, Ama Dablam and more all fall inside this route).
+// Note: the whole span is under DEFAULT_KEEP_RADIUS_KM (250 km), so unlike
+// the original Delhi -> Sankri route, this one won't trigger eviction —
+// that behaviour was already validated separately. This route is for
+// prep speed + real coverage in an untouched, peak-rich area.
 const ROUTE = [
-  { name: "Delhi", lat: 28.61, lon: 77.21 },
-  { name: "Panipat", lat: 29.39, lon: 76.97 },
-  { name: "Ambala", lat: 30.38, lon: 76.78 },
-  { name: "Saharanpur", lat: 29.97, lon: 77.55 },
-  { name: "Roorkee", lat: 29.87, lon: 77.89 },
-  { name: "Rishikesh", lat: 30.09, lon: 78.27 },
-  { name: "Mussoorie", lat: 30.45, lon: 78.08 },
-  { name: "Barkot", lat: 30.81, lon: 78.20 },
-  { name: "Netwar", lat: 31.00, lon: 78.22 },
-  { name: "Sankri", lat: 31.05, lon: 78.28 },
+  { name: "Kathmandu", lat: 27.7172, lon: 85.3240 },
+  { name: "Lukla", lat: 27.6869, lon: 86.7314 },
+  { name: "Phakding", lat: 27.7486, lon: 86.7154 },
+  { name: "Namche Bazaar", lat: 27.8069, lon: 86.7140 },
+  { name: "Tengboche", lat: 27.8353, lon: 86.7638 },
+  { name: "Dingboche", lat: 27.8926, lon: 86.8331 },
+  { name: "Lobuche", lat: 27.9622, lon: 86.8078 },
+  { name: "Gorak Shep", lat: 28.0051, lon: 86.8281 },
+  { name: "Everest Base Camp", lat: 28.0026, lon: 86.8528 },
+  { name: "Kala Patthar", lat: 28.0074, lon: 86.8285 },
 ];
 
 const state = { idx: -1, running: false, outcomes: [] }; // outcomes[i]: "ok" | "skipped" | "bad", per waypoint

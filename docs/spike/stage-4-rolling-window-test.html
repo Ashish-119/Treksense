@@ -50,12 +50,14 @@
   <h1>Rolling window test</h1>
   <p class="lede">Drives <span style="color:var(--ink)">PeakStore.autoPrepareIfNeeded()</span> — the Stage 4
     drift detector, online gate/backoff, and (reused from Stage 2) tile diff + eviction — through a real
-    ~290&nbsp;km route from Delhi toward Sankri, one waypoint at a time. This is the blueprint's own DoD
-    language literally: "feeding a 300&nbsp;km mock travel track." No phone needed — desktop DevTools'
-    Network → Offline toggle simulates the connectivity gap.</p>
+    ~155&nbsp;km route from Kathmandu into the Khumbu (Everest region), Nepal, one waypoint at a time. A
+    genuinely fresh, peak-dense area to test prep speed and real coverage on. This route is shorter than
+    the keep-radius (250&nbsp;km), so it won't trigger eviction — see the original Delhi → Sankri route
+    (still in git history) for that. No phone needed — desktop DevTools' Network → Offline toggle
+    simulates the connectivity gap.</p>
 
   <section>
-    <h2>Route — Delhi → Sankri, ~290 km</h2>
+    <h2>Route — Kathmandu → Khumbu (Everest region), ~155 km</h2>
     <div class="route" id="routeChips"></div>
     <div class="row" style="margin-top:10px">
       <button id="stepBtn">Next waypoint →</button>
@@ -79,7 +81,7 @@
   <section>
     <h2>How to test the "intermittent connectivity" part of the DoD</h2>
     <ol class="steps">
-      <li>Step through a few waypoints normally (online) — watch tiles accumulate and old ones evict once you're &gt; 250 km from the prepared centre.</li>
+      <li>Step through a few waypoints normally (online) — watch tiles accumulate as you go. This route is under 250 km end-to-end so it won't trigger eviction (already verified on the original, longer Delhi → Sankri route); this section is about the offline/backoff behaviour below.</li>
       <li>Open DevTools → Network → set <strong>Offline</strong>.</li>
       <li>Click "Next waypoint →" once or twice — should log <span style="color:var(--warn)">"skipped: offline"</span> with a backoff time, and the store must stay exactly as it was (nothing evicted, nothing corrupted — same guarantee Stage 2 verified).</li>
       <li>Set Network back to <strong>Online</strong>, keep stepping — the very next waypoint past the backoff window should prepare normally again.</li>
