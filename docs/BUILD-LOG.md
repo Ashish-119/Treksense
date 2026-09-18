@@ -512,3 +512,12 @@ Overpass's stated fair-use limit). `SW_VERSION` → `pf-stage4-v6`.
 first, since Kathmandu's tiles are now marked `stale`). Expect fewer aborts
 this time; any that remain should now represent genuinely stuck requests
 worth a closer look, not premature cutoffs.
+
+**Verified 2026‑09‑18:** re-ran the Nepal route live — 0 failures, real peak
+data throughout (86, 71, 28, 27 peaks in various tiles), drift/skip/eviction
+logic all correct. `TILE_FETCH_TIMEOUT_MS`/`TILE_FETCH_CONCURRENCY` fix
+confirmed working. The rolling-window DoD (items 1-5 of the Stage 4 manual
+test plan above) is now fully verified across two real routes and multiple
+real bugs found-and-fixed through live testing. Only item 6 — confirming
+the staleness chip's behavior directly on `peak-finder.html` on a phone —
+remains untested this stage.
