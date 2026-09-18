@@ -9,7 +9,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **1** | Backend + data layer (`/api/peaks?bbox=`) | ✅ done | 2026‑09‑12 | `api/peaks.js` + `api/_fallback-peaks.json` + `js/tiles.js` + `docs/PEAKS-API.md`. Tested against live Overpass and the fallback path via `scripts/dev-server.py`. |
 | **2** | On-device store + preparation | ✅ done | 2026‑09‑16 | `js/peakstore.js` (IndexedDB) + `sw.js` + `docs/spike/stage-2-store-test.html`. DoD verified in-browser, including a real bug found and fixed mid-test. |
 | **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
-| **4** | Automatic rolling window | 🟡 code done, awaiting your test | 2026‑09‑17 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Testable on a **desktop browser, no phone needed** — see `docs/spike/stage-4-rolling-window-test.html`. |
+| **4** | Automatic rolling window | ✅ done | 2026‑09‑19 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Verified on the test harness (two real routes, several real bugs found and fixed) and on `peak-finder.html` itself on a phone — chip correctly cycles "no peaks prepared" → "preparing…" → "prepared just now · here" with zero taps. |
 | **5** | Fallbacks, polish, a11y | ⬜ not started | — | |
 | **6** | Field test → harden → launch | ⬜ not started | — | |
 
@@ -521,3 +521,16 @@ test plan above) is now fully verified across two real routes and multiple
 real bugs found-and-fixed through live testing. Only item 6 — confirming
 the staleness chip's behavior directly on `peak-finder.html` on a phone —
 remains untested this stage.
+
+## Stage 4 — closed, 2026‑09‑19
+
+Item 6 verified: after clearing the leftover Nepal test data
+(`PeakStore.clearAll()` from the console, a dev-only technique, then
+reload), a fresh phone test of the real AR page showed the chip cycle
+correctly and automatically, no taps: `"no peaks prepared yet — waiting
+for a connection"` → `"preparing — 28.5_76 (11/20)"` (with live per-tile
+progress) → `"prepared just now · here"`, in well under two minutes. "0
+peaks loaded" for this particular indoor/urban test location is expected —
+same known characteristic as every other non-mountainous test location
+throughout this project, not a bug. **Stage 4's DoD is fully met.** Next:
+Stage 5 (fallbacks, polish, a11y), whenever you're ready to start it.
