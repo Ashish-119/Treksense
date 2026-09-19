@@ -8,6 +8,11 @@
   <title>Peak Finder — TrekSense</title>
   <meta name="description" content="Point your phone at the skyline and see the named Himalayan peaks around you — elevation, distance and bearing. Works offline once an area is prepared." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🏔️</text></svg>" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/peak-finder-icon-192.png" />
+  <meta name="theme-color" content="#2f6b4e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -28,12 +33,64 @@
       <p>Raise your phone at the skyline. Named Himalayan peaks — elevation, distance and
         bearing — get pinned to the real ridge using your camera, compass and GPS.</p>
 
+      <ul class="pkf-perm-primer" aria-label="Why Peak Finder asks for these permissions">
+        <li><span class="ic" aria-hidden="true">📷</span><span><b>Camera</b> — shows the live skyline so peak labels can be pinned to what you're actually looking at. Never recorded or uploaded.</span></li>
+        <li><span class="ic" aria-hidden="true">📍</span><span><b>Location</b> — works out which peaks are visible from where you stand, and downloads map data for your area. Stays on your device.</span></li>
+        <li><span class="ic" aria-hidden="true">🧭</span><span><b>Motion &amp; orientation</b> — knows which direction you're facing, so the right peak lines up with the right part of the sky.</span></li>
+      </ul>
+
       <div class="pkf-checklist" id="pkfChecklist"></div>
 
       <button class="pkf-btn-primary" id="pkfStartBtn">Start Peak Finder</button>
-      <p class="pkf-gate-err" id="pkfGateErr"></p>
+      <button class="pkf-link-btn" id="pkfNoGpsLink" type="button" hidden>No GPS? Set your location manually</button>
+      <p class="pkf-gate-err" id="pkfGateErr" role="alert"></p>
       <p style="color:#8b939d;font-size:0.8rem">Best held upright, outdoors, away from cars and metal railings.</p>
     </section>
+
+    <!-- ============ MANUAL LOCATION (GPS denied fallback, t5-3) ============ -->
+    <div class="pkf-manual-loc" id="pkfManualLoc" role="dialog" aria-modal="true" aria-label="Set your location manually" hidden>
+      <button class="pkf-close" id="pkfManualLocClose" aria-label="Cancel">×</button>
+      <h4>Set your location manually</h4>
+      <p>Pick a well-known trailhead, or paste coordinates (e.g. from a long-press in Google Maps).</p>
+      <label class="pkf-manual-input-lbl" for="pkfManualLatLon">Latitude, longitude</label>
+      <div class="pkf-manual-row">
+        <input type="text" id="pkfManualLatLon" inputmode="decimal" placeholder="e.g. 30.7268, 79.2436" autocomplete="off" />
+        <button class="pkf-btn-primary" id="pkfManualUseBtn" type="button">Use this location</button>
+      </div>
+      <p class="pkf-manual-err" id="pkfManualErr" role="alert"></p>
+      <div class="pkf-manual-quickpicks" id="pkfManualQuickpicks" aria-label="Well-known trailheads"></div>
+    </div>
+
+    <!-- ============ MAP MODE (camera/compass unavailable, t5-1/t5-2) ============ -->
+    <section class="pkf-map-view" id="pkfMapView" hidden aria-label="Map mode">
+      <div class="pkf-map-topbar">
+        <div>
+          <div class="pkf-map-title">Map mode</div>
+          <div class="pkf-map-sub" id="pkfMapSub">No camera — showing peaks on a radial compass instead</div>
+        </div>
+        <button class="pkf-btn-ghost pkf-hit" id="pkfMapNupToggle" type="button" aria-pressed="false">Manual N-up</button>
+      </div>
+      <div class="pkf-map-plot-wrap">
+        <svg class="pkf-map-plot" id="pkfMapPlot" viewBox="-110 -110 220 220" role="img" aria-label="Peaks around you, plotted by direction and distance"></svg>
+      </div>
+      <div class="pkf-status-chip">
+        <span class="pkf-chip" id="pkfMapDataChip">—</span>
+        <span class="pkf-chip" id="pkfMapPosChip">—</span>
+        <span class="pkf-chip" id="pkfMapStaleChip" hidden>—</span>
+      </div>
+      <div class="pkf-actionbar">
+        <button class="pkf-btn-ghost pkf-hit" id="pkfMapListBtn" type="button">Peak list</button>
+        <button class="pkf-btn-ghost pkf-hit" id="pkfMapTryCamBtn" type="button">Try camera again</button>
+      </div>
+    </section>
+
+    <!-- ============ ACCESSIBLE PEAK LIST (t5-5) — shared by AR view + map mode ============ -->
+    <div class="pkf-peak-list" id="pkfPeakList" role="dialog" aria-modal="true" aria-label="Peaks near you, ordered by distance" hidden>
+      <button class="pkf-close" id="pkfPeakListClose" aria-label="Close list">×</button>
+      <h4>Peaks near you</h4>
+      <p class="pkf-peak-list-hint">Ordered by distance, nearest first.</p>
+      <ul id="pkfPeakListUl"></ul>
+    </div>
 
     <!-- ============ AR VIEW ============ -->
     <section class="pkf-view" id="pkfView" hidden>
@@ -46,6 +103,9 @@
           <button class="pkf-chip pkf-chip-btn pkf-hit" id="pkfSensorChip" type="button"><span class="dot" id="pkfSensorDot"></span><span id="pkfSensorTxt">reading…</span></button>
         </div>
         <div class="pkf-compass-strip" id="pkfTicks"></div>
+        <div class="pkf-low-acc-banner" id="pkfLowAccBanner" role="status" hidden>
+          Compass accuracy is low — wave your phone in a slow figure-8 a few times to recalibrate.
+        </div>
         <div class="pkf-status-chip">
           <span class="pkf-chip" id="pkfDataChip">—</span>
           <span class="pkf-chip" id="pkfPosChip">—</span>
@@ -56,11 +116,12 @@
         <div class="pkf-actionbar">
           <button class="pkf-btn-ghost pkf-hit" id="pkfCalibBtn" type="button">Calibrate</button>
           <button class="pkf-btn-ghost pkf-hit" id="pkfResetBtn" type="button">Reset correction</button>
+          <button class="pkf-btn-ghost pkf-hit" id="pkfListBtn" type="button">Peak list</button>
         </div>
       </div>
 
       <!-- detail sheet -->
-      <div class="pkf-sheet" id="pkfSheet" role="dialog" aria-label="Peak detail">
+      <div class="pkf-sheet" id="pkfSheet" role="dialog" aria-modal="true" aria-label="Peak detail">
         <button class="pkf-close" id="pkfSheetClose" aria-label="Close">×</button>
         <div class="pkf-grab"></div>
         <h3 id="pkfSName">Peak</h3>
@@ -74,7 +135,7 @@
       </div>
 
       <!-- calibration flow -->
-      <div class="pkf-calib" id="pkfCalib">
+      <div class="pkf-calib" id="pkfCalib" role="dialog" aria-modal="true" aria-label="Field of view calibration">
         <button class="pkf-close" id="pkfCalibClose" aria-label="Close calibration">×</button>
         <h4 id="pkfCalibTitle">Step 1 — pick the peak under the reticle</h4>
         <p id="pkfCalibHint">Aim the phone so a peak you can identify sits under the centre crosshair, then find it in this list.</p>
@@ -98,6 +159,7 @@
       <h2>Peak Finder can't start</h2>
       <p id="pkfErrorMsg">Something needed wasn't available.</p>
       <button class="pkf-btn-ghost" id="pkfErrorRetry" type="button">Try again</button>
+      <button class="pkf-link-btn" id="pkfErrorManualLocBtn" type="button">Set your location manually instead</button>
     </section>
 
   </main>

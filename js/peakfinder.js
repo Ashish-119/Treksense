@@ -1,5 +1,5 @@
 /* ============================================================
-   TrekSense — peakfinder.js   (Peak Finder — Stage 3 AR view)
+   TrekSense — peakfinder.js   (Peak Finder — AR view + fallbacks)
 
    Camera + compass + GPS → js/peakstore.js (offline-first data) →
    bearing/elevation-angle projection → labels on the live view.
@@ -10,11 +10,14 @@
    iOS + Android devices. Projection math matches the geometry
    figure in docs/peak-finder-ar-blueprint.html.
 
-   Deliberately NOT built here (out of Stage 3 scope, scheduled
-   for Stage 4/5 instead): automatic background preparation, a
-   no-camera map-mode fallback, and manual location entry when
-   GPS is denied. Denied permissions just show a plain error for
-   now — see docs/BUILD-LOG.md.
+   Stage 4 added automatic background preparation (no manual
+   "Prepare" button — see autoPrepareTick()). Stage 5 added the
+   permission-denied fallbacks the blueprint calls for: map mode
+   when camera/compass aren't available (enterMapMode()), manual
+   location entry when GPS is denied (useManualLocation()), an
+   accessible peak list for screen readers (renderPeakList()),
+   and horizon-line placement for peaks with unknown elevation.
+   See docs/BUILD-LOG.md for the per-stage writeups.
    ============================================================ */
 "use strict";
 const $ = (id) => document.getElementById(id);
@@ -80,8 +83,9 @@ const S = {
   pos: null,
   peaks: [],
   calib: { step: 0, peakA: null, tapXFrac: null },
-  lastRenderAt: 0, idleSince: null,
+  lastRenderAt: 0, lastMapRenderAt: 0, idleSince: null,
   camStream: null,
+  hasCamera: false, hasOrientation: false,
 };
 
 function loadPersisted() {
@@ -109,10 +113,19 @@ function persistAltitude() {
 }
 
 /* ---------- boot ---------- */
+function registerServiceWorker() {
+  // Peak Finder is the site's one installable PWA surface (manifest.json's
+  // start_url points here) — the service worker previously only got
+  // registered from the Stage 2 test harness, never from the real page, so
+  // app-shell caching + PWA installability were never actually live here.
+  if (!("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("[peakfinder] sw registration failed", e));
+}
 document.addEventListener("DOMContentLoaded", () => {
   $("site-header").innerHTML = headerHTML("peaks");
   $("bottom-nav").innerHTML = bottomNavHTML("peaks");
   updateThemeIcons();
+  registerServiceWorker();
   loadPersisted();
   renderPreflight();
   $("pkfStartBtn").addEventListener("click", startFlow);
@@ -132,6 +145,58 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isNaN(v)) { S.observerAlt = v; persistAltitude(); toast("Altitude set to " + v + " m."); }
   });
   if (S.observerAlt != null) $("pkfAltInput").value = S.observerAlt;
+
+  /* manual location (t5-3) */
+  $("pkfNoGpsLink").addEventListener("click", openManualLocation);
+  $("pkfErrorManualLocBtn").addEventListener("click", openManualLocation);
+  $("pkfManualLocClose").addEventListener("click", closeManualLocation);
+  $("pkfManualUseBtn").addEventListener("click", () => {
+    const v = parseLatLon($("pkfManualLatLon").value);
+    if (!v) { $("pkfManualErr").textContent = 'Enter coordinates as "latitude, longitude", e.g. 30.7268, 79.2436.'; return; }
+    useManualLocation(v.lat, v.lon);
+  });
+
+  /* map mode (t5-1/t5-2) */
+  $("pkfMapNupToggle").addEventListener("click", () => {
+    if ($("pkfMapNupToggle").disabled) return;
+    mapNupManual = !mapNupManual;
+    $("pkfMapNupToggle").classList.toggle("on", mapNupManual);
+    $("pkfMapNupToggle").setAttribute("aria-pressed", String(mapNupManual));
+    $("pkfMapNupToggle").textContent = mapNupManual ? "Use compass" : "Manual N-up";
+  });
+  $("pkfMapTryCamBtn").addEventListener("click", async () => {
+    try { await startCamera(); S.hasCamera = true; await enterArView(); }
+    catch (e) { toast((e && e.message) || "Camera still isn't available."); }
+  });
+
+  /* accessible peak list (t5-5), reachable from both AR view and map mode */
+  $("pkfListBtn").addEventListener("click", openPeakList);
+  $("pkfMapListBtn").addEventListener("click", openPeakList);
+  $("pkfPeakListClose").addEventListener("click", closePeakList);
+
+  /* Escape closes whichever overlay dialog is open, standard a11y behaviour */
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if ($("pkfManualLoc").classList.contains("show")) closeManualLocation();
+    else if ($("pkfPeakList").classList.contains("show")) closePeakList();
+    else if ($("pkfSheet").classList.contains("show")) $("pkfSheet").classList.remove("show");
+    else if ($("pkfCalib").classList.contains("show")) closeCalib();
+  });
+
+  /* release the camera when the tab isn't visible, reacquire it when it is
+     again (t5-6) — a background tab holding the camera open is both a
+     battery drain and, on some browsers, an outright resource leak */
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (S.camStream) {
+        S.camStream.getTracks().forEach((t) => t.stop());
+        S.camStream = null;
+        $("pkfCam").srcObject = null;
+      }
+    } else if (!$("pkfView").hidden && S.hasCamera && !S.camStream) {
+      startCamera().catch(() => toast("Camera couldn't restart — reopen Peak Finder if the picture stays black."));
+    }
+  });
 });
 
 function renderPreflight() {
@@ -147,30 +212,138 @@ function renderPreflight() {
     row("Location", hasGeo ? "available" : "missing", hasGeo ? "ok" : "bad");
 }
 
+/* Every permission/sensor can be denied or absent (Stage 5, t5-1..t5-3) —
+   each path must land somewhere useful rather than a dead end. Camera and
+   orientation are requested independently now (neither blocks the other),
+   and a GPS failure offers manual location instead of a hard stop. Which
+   mode we land in is decided once we have *some* position, by
+   enterBestAvailableMode(). */
 async function startFlow() {
   $("pkfStartBtn").disabled = true;
   $("pkfGateErr").textContent = "";
+  $("pkfNoGpsLink").hidden = true;
+
+  try { await requestOrientationPermission(); attachSensorListeners(); S.hasOrientation = true; } catch (e) { S.hasOrientation = false; }
+  try { await startCamera(); S.hasCamera = true; } catch (e) { S.hasCamera = false; }
+
   try {
-    await requestOrientationPermission();
-    attachSensorListeners();
-    await startCamera();
     await waitForFirstPosition();
-
-    updateScreenAngle();
-    window.addEventListener("orientationchange", updateScreenAngle);
-    if (screen.orientation) screen.orientation.addEventListener("change", updateScreenAngle);
-
-    $("pkfGate").hidden = true;
-    $("pkfView").hidden = false;
-    await loadPeaksForCurrentArea(); // show whatever's already cached immediately, before any network round-trip
-    setupDragHandlers();
-    requestAnimationFrame(loop);
-    autoPrepareArmed = true;
-    autoPrepareTick(); // and kick off the rolling-window check right away using the position we already have
+    await enterBestAvailableMode();
   } catch (e) {
-    showError(e);
+    if (S.pos) showError(e); // had a position — something else genuinely broke
+    else { $("pkfGateErr").textContent = e.message; $("pkfNoGpsLink").hidden = false; } // no GPS fix — offer manual location
   }
   $("pkfStartBtn").disabled = false;
+}
+
+/* Routes to AR (camera + compass both available) or Map mode (either is
+   missing/denied — map mode needs neither: it has its own manual N-up). */
+async function enterBestAvailableMode() {
+  updateScreenAngle();
+  window.addEventListener("orientationchange", updateScreenAngle);
+  if (screen.orientation) screen.orientation.addEventListener("change", updateScreenAngle);
+
+  $("pkfGate").hidden = true;
+  $("pkfError").hidden = true;
+  closeManualLocation();
+
+  if (S.hasCamera && S.hasOrientation) await enterArView();
+  else await enterMapMode();
+}
+
+async function enterArView() {
+  $("pkfView").hidden = false;
+  $("pkfMapView").hidden = true;
+  await loadPeaksForCurrentArea(); // show whatever's already cached immediately, before any network round-trip
+  setupDragHandlers();
+  requestAnimationFrame(loop);
+  autoPrepareArmed = true;
+  autoPrepareTick(); // and kick off the rolling-window check right away using the position we already have
+}
+
+/* ---------- map mode (Stage 5, t5-1: camera or compass unavailable) ----------
+   No camera dependency at all — a radial plot of peaks by bearing/distance
+   around a centre "you" marker. Rotates with the live compass when one's
+   available; otherwise (or by choice, t5-2) stays fixed north-up. */
+let mapNupManual = false;
+async function enterMapMode() {
+  $("pkfView").hidden = true;
+  $("pkfMapView").hidden = false;
+  $("pkfMapSub").textContent = !S.hasCamera
+    ? "No camera — showing peaks on a radial map instead"
+    : "No compass reading — showing peaks on a radial map instead";
+  const toggle = $("pkfMapNupToggle");
+  if (!S.hasOrientation) {
+    mapNupManual = true;
+    toggle.disabled = true;
+    toggle.textContent = "North-up (no compass)";
+  } else {
+    toggle.disabled = false;
+    toggle.setAttribute("aria-pressed", String(mapNupManual));
+    toggle.classList.toggle("on", mapNupManual);
+    toggle.textContent = mapNupManual ? "Use compass" : "Manual N-up";
+  }
+  await loadPeaksForCurrentArea();
+  renderMapPlot();
+  autoPrepareArmed = true;
+  autoPrepareTick();
+  requestAnimationFrame(mapLoop);
+}
+function mapLoop(ts) {
+  if ($("pkfMapView").hidden) return; // left map mode — stop this loop, the AR loop (if any) runs independently
+  requestAnimationFrame(mapLoop);
+  if (ts - S.lastMapRenderAt < currentFrameInterval()) return;
+  S.lastMapRenderAt = ts;
+  renderMapPlot();
+}
+function renderMapPlot() {
+  const svg = $("pkfMapPlot");
+  const ns = "http://www.w3.org/2000/svg";
+  svg.innerHTML = "";
+  const R = 95;
+  const rotate = (mapNupManual || !S.hasOrientation) ? 0 : (computeTrueHeading() || 0);
+  const maxDist = Math.max(25, S.pos ? Math.max(0, ...S.peaks.map((p) => haversineKm(S.pos, p))) : 25);
+
+  const mkEl = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  };
+  [0.34, 0.67, 1].forEach((frac) => {
+    const r = frac * R;
+    svg.appendChild(mkEl("circle", { class: "ring", cx: 0, cy: 0, r: r }));
+    const lbl = mkEl("text", { class: "ring-lbl", x: 3, y: -r + 8 });
+    lbl.textContent = Math.round(maxDist * frac) + " km";
+    svg.appendChild(lbl);
+  });
+  ["N", "E", "S", "W"].forEach((card, i) => {
+    const ang = toRad(i * 90 - rotate - 90);
+    const x2 = Math.cos(ang) * R, y2 = Math.sin(ang) * R;
+    svg.appendChild(mkEl("line", { class: "card-line", x1: 0, y1: 0, x2: x2, y2: y2 }));
+    const lx = Math.cos(ang) * (R + 8), ly = Math.sin(ang) * (R + 8);
+    const lbl = mkEl("text", { class: "card-lbl", x: lx, y: ly + 2 });
+    lbl.textContent = card;
+    svg.appendChild(lbl);
+  });
+  svg.appendChild(mkEl("circle", { class: "you", cx: 0, cy: 0, r: 4 }));
+
+  if (S.pos) {
+    S.peaks.forEach((p) => {
+      const dist = haversineKm(S.pos, p);
+      const brg = bearingDeg(S.pos, p);
+      const r = Math.min(R, (dist / maxDist) * R);
+      const ang = toRad(brg - rotate - 90);
+      const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
+      const dot = mkEl("circle", { class: "peak-dot", cx: x, cy: y, r: 3 });
+      dot.addEventListener("click", () => openSheet(p, dist, brg));
+      svg.appendChild(dot);
+      const lbl = mkEl("text", { class: "peak-lbl", x: x + 5, y: y + 2 });
+      lbl.textContent = p.name;
+      svg.appendChild(lbl);
+    });
+  }
+  $("pkfMapDataChip").textContent = S.peaks.length + " peak" + (S.peaks.length === 1 ? "" : "s") + " loaded";
+  $("pkfMapPosChip").textContent = S.pos ? (S.pos.manual ? "manual location" : (S.pos.acc ? "±" + Math.round(S.pos.acc) + " m" : "GPS ok")) : "locating…";
 }
 
 async function requestOrientationPermission() {
@@ -240,6 +413,56 @@ function showError(e) {
   $("pkfErrorMsg").textContent = (e && e.message) || String(e);
   $("pkfError").hidden = false;
   $("pkfGate").hidden = true;
+}
+
+/* ---------- manual location (Stage 5, t5-3: GPS denied fallback) ----------
+   Reachable from the gate's "No GPS?" link (after a real GPS failure) and
+   from the error screen. Feeds the exact same pipeline as a real GPS fix —
+   enterBestAvailableMode() doesn't know or care whether S.pos came from
+   watchPosition or here. No live tracking after this (a manual location is
+   static by definition), so autoPrepareTick() runs once for it and that's it. */
+const MANUAL_LOCATION_PRESETS = [
+  { name: "Manali", lat: 32.2432, lon: 77.1892 },
+  { name: "Leh", lat: 34.1526, lon: 77.5771 },
+  { name: "Joshimath", lat: 30.5551, lon: 79.5644 },
+  { name: "Munsiyari", lat: 30.0668, lon: 80.2377 },
+  { name: "Darjeeling", lat: 27.0410, lon: 88.2663 },
+  { name: "Gangtok", lat: 27.3389, lon: 88.6065 },
+  { name: "Pahalgam", lat: 34.0161, lon: 75.3212 },
+  { name: "Namche Bazaar (Nepal)", lat: 27.8069, lon: 86.7140 },
+  { name: "Kathmandu (Nepal)", lat: 27.7172, lon: 85.3240 },
+];
+function openManualLocation() {
+  $("pkfManualErr").textContent = "";
+  $("pkfManualLatLon").value = "";
+  $("pkfManualQuickpicks").innerHTML = MANUAL_LOCATION_PRESETS.map((p) =>
+    '<button type="button" data-lat="' + p.lat + '" data-lon="' + p.lon + '">' + escapeHTML(p.name) + "</button>"
+  ).join("");
+  Array.prototype.slice.call($("pkfManualQuickpicks").querySelectorAll("button")).forEach((btn) => {
+    btn.addEventListener("click", () => useManualLocation(parseFloat(btn.dataset.lat), parseFloat(btn.dataset.lon)));
+  });
+  $("pkfManualLoc").hidden = false;
+  $("pkfManualLoc").classList.add("show");
+  $("pkfManualLatLon").focus();
+}
+function closeManualLocation() {
+  $("pkfManualLoc").classList.remove("show");
+  $("pkfManualLoc").hidden = true;
+}
+function parseLatLon(str) {
+  const m = str.trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { lat: lat, lon: lon };
+}
+async function useManualLocation(lat, lon) {
+  S.pos = { lat: lat, lon: lon, alt: null, acc: null, manual: true };
+  try {
+    await enterBestAvailableMode();
+  } catch (e) {
+    showError(e);
+  }
 }
 
 /* ---------- sensors ---------- */
@@ -348,8 +571,12 @@ function onPrepStatus(evt) {
   else if (evt.phase === "offline") setPrepLine("offline — retrying automatically");
   else if (evt.phase === "done") setPrepLine(null); // refreshStaleChip() paints the steady-state line right after
 }
+// Stage 5 added a second staleness chip in map mode — both stay in sync
+// with the same prep state regardless of which view is actually visible.
+const STALE_CHIP_IDS = ["pkfStaleChip", "pkfMapStaleChip"];
 function setPrepLine(text) {
-  if (text) { $("pkfStaleChip").textContent = text; $("pkfStaleChip").hidden = false; }
+  if (!text) return;
+  STALE_CHIP_IDS.forEach((id) => { $(id).textContent = text; $(id).hidden = false; });
 }
 function fmtAge(ms) {
   if (ms == null) return "—";
@@ -361,12 +588,12 @@ function fmtAge(ms) {
 }
 async function refreshStaleChip() {
   const prep = await PeakStore.getPrep();
-  const chip = $("pkfStaleChip");
-  if (!prep) { chip.textContent = "no peaks prepared yet — waiting for a connection"; chip.hidden = false; return; }
-  const distKm = S.pos ? haversineKm(S.pos, prep.center) : null;
-  const distTxt = distKm == null ? "" : distKm < 2 ? " · here" : " · " + Math.round(distKm) + " km away";
-  chip.textContent = "prepared " + fmtAge(prep.preparedAt) + distTxt;
-  chip.hidden = false;
+  const text = !prep
+    ? "no peaks prepared yet — waiting for a connection"
+    : "prepared " + fmtAge(prep.preparedAt) + (
+        !S.pos ? "" : haversineKm(S.pos, prep.center) < 2 ? " · here" : " · " + Math.round(haversineKm(S.pos, prep.center)) + " km away"
+      );
+  STALE_CHIP_IDS.forEach((id) => { $(id).textContent = text; $(id).hidden = false; });
 }
 
 /* ---------- render loop ---------- */
@@ -387,6 +614,7 @@ function renderFrame() {
     placeLabels(heading, pitch, S.hFOV, vw, vh);
   }
 }
+let lowAccBadSince = null;
 function updateChips(heading) {
   $("pkfHeadingBig").innerHTML = heading == null ? "—<small>°</small>" : Math.round(heading) + "<small>° " + compassPoint(heading) + "</small>";
   const conf = poseConfidence();
@@ -394,6 +622,18 @@ function updateChips(heading) {
   $("pkfSensorTxt").textContent = conf.label;
   $("pkfDataChip").textContent = S.peaks.length + " peak" + (S.peaks.length === 1 ? "" : "s") + " loaded";
   $("pkfPosChip").textContent = S.pos ? (S.pos.acc ? "±" + Math.round(S.pos.acc) + " m" : "GPS ok") : "locating…";
+
+  // Stage 5, t5-2: a persistent banner (not just the small chip) once the
+  // compass has been genuinely bad for a while — a brief blip while
+  // recalibrating shouldn't nag, so this only shows after ~1.5s continuous.
+  const banner = $("pkfLowAccBanner");
+  if (conf.level === "bad") {
+    if (lowAccBadSince == null) lowAccBadSince = performance.now();
+    banner.hidden = performance.now() - lowAccBadSince < 1500;
+  } else {
+    lowAccBadSince = null;
+    banner.hidden = true;
+  }
 }
 function drawTicks(heading, hFOV, vw) {
   const box = $("pkfTicks");
@@ -435,9 +675,15 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
       const brg = bearingDeg(S.pos, p);
       const rel = norm180(brg - heading);
       if (Math.abs(rel) > hFOV / 2 + margin) return null;
-      const elevAngle = elevationAngleDeg(S.observerAlt || 0, p.elevation, dist);
+      // Stage 5, t5-7: a peak with no known elevation has no basis for a real
+      // elevation angle — elevationAngleDeg() would silently treat it as
+      // sea-level, which for most real distances lands well below the true
+      // horizon (misleading, not "unknown"). Pin it to the horizon line
+      // instead and mark it, rather than guess a wrong vertical position.
+      const noElev = p.elevation == null;
+      const elevAngle = noElev ? 0 : elevationAngleDeg(S.observerAlt || 0, p.elevation, dist);
       return {
-        p: p, dist: dist, brg: brg,
+        p: p, dist: dist, brg: brg, noElev: noElev,
         x: vw / 2 + rel * (vw / hFOV),
         y: vh * 0.5 - (pitch + elevAngle) * ppdV,
       };
@@ -469,11 +715,12 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
     dot.setAttribute("cx", v.x); dot.setAttribute("cy", v.y); dot.setAttribute("r", 2.4);
     leaders.appendChild(dot);
 
-    const ft = v.p.elevation != null ? Math.round(v.p.elevation * 3.28084).toLocaleString("en-IN") + " ft" : "elev n/a";
+    const ft = v.p.elevation != null ? Math.round(v.p.elevation * 3.28084).toLocaleString("en-IN") + " ft" : "elev n/a — on horizon";
     const distTxt = v.dist < 10 ? v.dist.toFixed(1) : String(Math.round(v.dist));
     const el = document.createElement("button");
     el.type = "button";
-    el.className = "pkf-label pkf-hit" + (v.dist > 35 ? " far" : "");
+    el.className = "pkf-label pkf-hit" + (v.dist > 35 ? " far" : "") + (v.noElev ? " no-elev" : "");
+    if (v.noElev) el.title = "Elevation unknown — placed on the horizon line, reduced vertical accuracy.";
     el.style.left = v.x + "px";
     el.style.top = bottom + "px";
     el.innerHTML = '<div class="nm">' + escapeHTML(v.p.name) + '</div><div class="mt">' + ft + " · " + distTxt + " km · " + compassPoint(v.brg) + "</div>";
@@ -498,6 +745,49 @@ function openSheet(peak, dist, brg) {
   $("pkfSMap").src = "https://maps.google.com/maps?q=" + peak.lat + "," + peak.lon + "(" + encodeURIComponent(peak.name) + ")&t=p&z=12&output=embed";
   $("pkfSDirections").href = "https://www.google.com/maps?q=" + peak.lat + "," + peak.lon + "(" + encodeURIComponent(peak.name) + ")&t=p";
   $("pkfSheet").classList.add("show");
+}
+
+/* ---------- accessible peak list (Stage 5, t5-5) ----------
+   A real semantic list — not the AR labels, which are positioned purely by
+   screen geometry and reshuffle every frame, unusable for a screen reader.
+   Same list content works whether we're in AR view or map mode. Format
+   matches the blueprint's own example verbatim: "Nanda Devi, 7,816 m,
+   42 km, north-east". */
+const COMPASS_WORDS = [
+  "north", "north-northeast", "northeast", "east-northeast", "east", "east-southeast", "southeast", "south-southeast",
+  "south", "south-southwest", "southwest", "west-southwest", "west", "west-northwest", "northwest", "north-northwest",
+];
+function compassWord(deg) { return COMPASS_WORDS[Math.round(norm360(deg) / 22.5) % 16]; }
+function renderPeakList() {
+  const ul = $("pkfPeakListUl");
+  if (!S.pos || !S.peaks.length) {
+    ul.innerHTML = '<li style="padding:14px;color:#8b939d;font-size:0.85rem">No peaks loaded yet.</li>';
+    return;
+  }
+  const sorted = S.peaks
+    .map((p) => ({ p: p, dist: haversineKm(S.pos, p), brg: bearingDeg(S.pos, p) }))
+    .sort((a, b) => a.dist - b.dist);
+  ul.innerHTML = sorted.map((v, i) => {
+    const elevTxt = v.p.elevation != null ? v.p.elevation.toLocaleString("en-IN") + " m" : "elevation unknown";
+    const distTxt = (v.dist < 10 ? v.dist.toFixed(1) : Math.round(v.dist)) + " km";
+    return '<li><button type="button" data-i="' + i + '">' + escapeHTML(v.p.name) + ", " + elevTxt + ", " + distTxt + ", " + compassWord(v.brg) +
+      "<small>" + Math.round(v.brg) + "°" + (v.p.elevation == null ? " · reduced vertical accuracy" : "") + "</small></button></li>";
+  }).join("");
+  Array.prototype.slice.call(ul.querySelectorAll("button")).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = sorted[parseInt(btn.dataset.i, 10)];
+      if (v) { closePeakList(); openSheet(v.p, v.dist, v.brg); }
+    });
+  });
+}
+function openPeakList() {
+  renderPeakList();
+  $("pkfPeakList").hidden = false;
+  $("pkfPeakList").classList.add("show");
+}
+function closePeakList() {
+  $("pkfPeakList").classList.remove("show");
+  $("pkfPeakList").hidden = true;
 }
 
 /* ---------- field correction (drag to align) ---------- */

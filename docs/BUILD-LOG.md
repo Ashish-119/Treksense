@@ -10,7 +10,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **2** | On-device store + preparation | ✅ done | 2026‑09‑16 | `js/peakstore.js` (IndexedDB) + `sw.js` + `docs/spike/stage-2-store-test.html`. DoD verified in-browser, including a real bug found and fixed mid-test. |
 | **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
 | **4** | Automatic rolling window | ✅ done | 2026‑09‑19 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Verified on the test harness (two real routes, several real bugs found and fixed) and on `peak-finder.html` itself on a phone — chip correctly cycles "no peaks prepared" → "preparing…" → "prepared just now · here" with zero taps. |
-| **5** | Fallbacks, polish, a11y | ⬜ not started | — | |
+| **5** | Fallbacks, polish, a11y | 🟡 code done, awaiting your test | 2026‑09‑19 | Map mode (camera/compass denied), manual location entry (GPS denied), accessible peak list, permission priming, low-accuracy banner, horizon placement for unknown-elevation peaks, PWA manifest/icons/service-worker registration. **Zero browser testing possible on my end** (camera/GPS/orientation need a real device, same as Stage 3) — see below. |
 | **6** | Field test → harden → launch | ⬜ not started | — | |
 
 **Legend:** ⬜ not started · 🟡 in progress · ✅ done · 🔴 blocked
@@ -534,3 +534,158 @@ peaks loaded" for this particular indoor/urban test location is expected —
 same known characteristic as every other non-mountainous test location
 throughout this project, not a bug. **Stage 4's DoD is fully met.** Next:
 Stage 5 (fallbacks, polish, a11y), whenever you're ready to start it.
+
+## Stage 5 — what shipped
+
+All seven build items (t5-1 through t5-7) are code-complete. Same handoff
+shape as Stage 3: everything here depends on camera/GPS/orientation, which
+means **zero of it can be exercised from where I'm building** — I've code
+reviewed it carefully (every element ID referenced in JS cross-checked
+against the HTML, brace/paren balance verified, manifest JSON validated),
+but the actual behavior needs a real device.
+
+- **Map mode (t5-1, t5-2) — `enterMapMode()` / `renderMapPlot()` in
+  `js/peakfinder.js`, `.pkf-map-view` in `peak-finder.html`.** A radial SVG
+  plot: you're the centre dot, peaks are placed by real bearing/distance
+  (range rings at ~1/3, 2/3, and max distance of whatever's loaded), no
+  basemap, no camera dependency at all. Rotates with the live compass when
+  one's available; a **Manual N-up** toggle (t5-2) locks it north-up
+  instead — and locks automatically, toggle disabled, when there's no
+  compass reading at all rather than offering a control that can't do
+  anything. Entered automatically whenever camera OR orientation isn't
+  available (not just camera — a phone with a working camera but no usable
+  compass can't do real AR either, so it gets the same graceful landing).
+  A **"Try camera again"** button lets you retry without reloading.
+- **Low-accuracy banner (t5-2) — `updateChips()`.** The existing small
+  sensor chip already showed compass confidence; this adds a more visible
+  banner once it's been genuinely bad for ~1.5s continuous (not a flicker
+  on every noisy frame), reusing the existing figure-eight recalibration
+  guidance.
+- **Manual location (t5-3) — `openManualLocation()` / `useManualLocation()`,
+  `.pkf-manual-loc` in `peak-finder.html`.** A "No GPS?" link appears on the
+  gate **only after a real GPS failure** (denied, timed out, or genuinely
+  unsupported), leading to a panel with a free-text "latitude, longitude"
+  field (paste from a Google Maps long-press) plus nine curated Himalayan
+  trailhead quick-picks (Manali, Leh, Joshimath, Munsiyari, Darjeeling,
+  Gangtok, Pahalgam, Namche Bazaar, Kathmandu). No map library — the site's
+  CSP only allows scripts from `'self'`, and adding an external mapping
+  library would've meant loosening that for one panel. Whatever's picked
+  feeds `enterBestAvailableMode()` exactly like a real GPS fix would; the
+  only difference is there's no live tracking afterward (a manual location
+  is static by definition), so the rolling window prepares once for it and
+  stops, correctly.
+- **Permission priming (t5-4) — the gate's new `<ul class="pkf-perm-primer">`
+  in `peak-finder.html`.** Three lines explaining camera/location/motion
+  *before* `Start Peak Finder` is tapped, i.e. before any OS permission
+  dialog fires.
+- **Accessible peak list (t5-5) — `renderPeakList()` / `compassWord()`.** A
+  real `<ul>`, not the AR labels (which are positioned purely by screen
+  geometry and reshuffle every frame — unusable for a screen reader).
+  Reachable from both AR view and map mode via a **Peak list** button.
+  Format matches the blueprint's own example exactly: "Nanda Devi, 7,816 m,
+  42 km, north-east".
+- **`prefers-reduced-motion` / camera release / idle throttle (t5-6).**
+  The reduced-motion rule turned out to already exist site-wide
+  (`css/styles.css` line ~883, a blanket `*{animation:none;transition:none}`
+  under the media query) — nothing to add there. Idle-based frame-rate
+  throttling also already existed from Stage 3 (`currentFrameInterval()`).
+  What was missing: releasing the camera when the tab is hidden
+  (`document.visibilitychange` now stops every track and clears
+  `S.camStream`) and reacquiring it when the tab's visible again — a
+  background tab holding the camera open is a real battery/resource cost,
+  and nothing was doing this before.
+- **Horizon placement for unknown-elevation peaks (t5-7) —
+  `placeLabels()`.** Previously a `null` elevation was silently treated as
+  sea-level, which for most real distances put the label *below* the true
+  horizon — technically "some" position, but a wrong and misleading one,
+  not "unknown." Now pinned explicitly to the horizon line (elevation angle
+  forced to 0°) and marked: a distinct label style (`.no-elev`, muted
+  border instead of amber), the existing "elev n/a" text extended to "elev
+  n/a — on horizon", and the same "reduced vertical accuracy" note carried
+  into the accessible peak list.
+- **PWA infrastructure (DoD requirement, not its own build item).**
+  `manifest.json` (name, icons, `start_url: /peak-finder.html`,
+  `display: standalone`), real icon assets in `icons/` (192px/512px, both
+  a plain and a "maskable"-safe-zone variant, rasterized from an SVG
+  source matching the site's actual logo mark and brand green `#2f6b4e` —
+  generated locally via macOS's built-in `qlmanage` QuickLook thumbnailer,
+  no external tool needed), and — the one genuine gap found while building
+  this — **`peak-finder.html` itself never registered the service worker**.
+  Only the Stage 2 test harness ever called `serviceWorker.register()`;
+  the real product page never did, which means the PWA installability and
+  app-shell offline caching this whole build has been assuming were never
+  actually live on the one page that matters. Fixed in
+  `registerServiceWorker()`, called on boot. `sw.js`'s `APP_SHELL` extended
+  to precache the manifest and icons. `SW_VERSION` → `pf-stage5-v1`.
+- **Small a11y pass beyond the explicit build list**, since it directly
+  serves the DoD's axe requirement: added `aria-modal="true"` to every
+  overlay dialog (including the pre-existing calibration overlay, which had
+  no ARIA role at all before this), and a global **Escape** key handler to
+  close whichever dialog is open.
+
+**Deliberately not built:** a real drop-a-pin map widget for manual
+location (see above — CSP + no-new-dependency reasoning); WMM-based true
+declination (still the coarse stand-in from Stage 0, unchanged — Android
+Stage 0 data still hasn't landed, tracked since Stage 0/3).
+
+## Stage 5 — manual test plan (yours — nothing here can run without a device)
+
+**Camera-denied path (t5-1):** on a fresh permission state (or via browser
+site-settings → reset permissions for this site), tap Start, deny camera
+when prompted, allow location/motion. Should land in **map mode**, not an
+error screen — a radial plot with you at the centre, a rotating N marker,
+peaks as dots. Tap **Try camera again**; granting this time should switch
+you into the normal AR view.
+
+**Compass-denied/unavailable path (t5-1/t5-2):** if your device/browser
+doesn't expose orientation, or you deny the motion permission prompt (iOS
+Safari asks separately), you should also land in map mode, with the
+**Manual N-up** toggle disabled and reading "North-up (no compass)" rather
+than offering a non-functional option.
+
+**GPS-denied path (t5-3):** deny location. The gate should show the error
+message and reveal **"No GPS? Set your location manually"**. Tap it, try
+an invalid entry (e.g. "abc") — should show a validation error, not crash.
+Try a real "lat, lon" paste and a quick-pick town — both should proceed
+into AR or map mode (whichever camera/compass state allows) with peaks
+loading for that location.
+
+**Permission priming (t5-4):** just visually confirm the three
+camera/location/motion explanation lines appear on the gate *before* you
+tap Start — i.e. before any OS permission dialog.
+
+**Accessible peak list (t5-5):** tap **Peak list** from either AR view or
+map mode. Confirm entries read like "Nanda Devi, 7,816 m, 42 km,
+north-east" and are ordered nearest-first. If you have a screen reader
+handy (VoiceOver/TalkBack), turn it on and confirm the list reads
+sensibly — this is the one part of Stage 5 I genuinely cannot evaluate at
+all without one.
+
+**Camera release on tab hide (t5-6):** while Peak Finder's camera view is
+active, switch to another app/tab for a few seconds, then come back.
+Camera should resume (possibly a brief black flash while it reacquires),
+not stay frozen on the last frame. Bonus check: if your OS shows a
+camera-in-use indicator, confirm it disappears while backgrounded.
+
+**Reduced motion (t5-6):** turn on "Reduce Motion" in your OS accessibility
+settings, reload the page, confirm the detail sheet and labels appear
+without a slide/fade animation (should just snap into place).
+
+**Missing elevation (t5-7):** hard to force deliberately, but if you ever
+see a label reading "elev n/a — on horizon" with a greyish left border
+instead of the usual amber one, that's this working — it should sit right
+on the horizon strip, not below it.
+
+**PWA install (DoD):** open `peak-finder.html` in Chrome, DevTools →
+Lighthouse tab → run a report with the "Progressive Web App"/installability
+checks included (exact panel name varies by Chrome version — look for
+"Installable" in the report). Separately, DevTools → Lighthouse also has an
+**Accessibility** category that runs axe-core under the hood — run that
+too and report back what it finds. On mobile, check whether your browser
+offers an actual "Add to Home Screen" / "Install" prompt for the page.
+
+**Note on testing this stage at all:** like Stage 3, the permission-denial
+paths need a way to actually deny each permission, which usually means
+resetting the site's permissions between tests (browser site-settings, or
+a fresh Incognito window per test) rather than relying on whatever you
+answered the first time.

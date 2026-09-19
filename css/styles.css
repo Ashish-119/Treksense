@@ -1453,6 +1453,8 @@ body.fx-page-exit {
 .pkf-label .mt { font-size: 10px; color: rgba(255,255,255,0.72); margin-top: 1px; }
 .pkf-label.far { opacity: 0.82; }
 .pkf-label.far .nm { font-size: 11px; }
+.pkf-label.no-elev { border-left-color: #8b939d; }
+.pkf-label.no-elev .mt { color: #b9bcc2; }
 
 /* mode/action bar */
 .pkf-actionbar {
@@ -1530,6 +1532,92 @@ body.fx-page-exit {
 .pkf-error p { color: #b9bcc2; max-width: 40ch; font-size: 0.92rem; }
 
 @media (prefers-reduced-motion: reduce) { .pkf-label { transition: none; } }
+
+/* ---- Stage 5: permission priming + text links ---- */
+.pkf-perm-primer { display: flex; flex-direction: column; gap: 10px; padding: 0; margin: 2px 0; list-style: none; max-width: 46ch; }
+.pkf-perm-primer li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; color: #b9bcc2; line-height: 1.45; }
+.pkf-perm-primer .ic { font-size: 1.1rem; flex: none; line-height: 1.3; }
+.pkf-perm-primer b { color: #e9eae5; }
+.pkf-link-btn {
+  background: none; border: 0; color: #d9a13b; font: inherit; font-size: 0.85rem; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 4px 0; text-align: left;
+}
+
+/* ---- Stage 5: manual location panel (GPS denied fallback, t5-3) ---- */
+.pkf-manual-loc {
+  position: absolute; inset: 0; z-index: 55; display: none; flex-direction: column;
+  background: rgba(8,11,14,0.96); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  padding: calc(env(safe-area-inset-top) + 18px) 18px 18px; pointer-events: auto; overflow-y: auto;
+}
+.pkf-manual-loc[hidden] { display: none; }
+.pkf-manual-loc.show { display: flex; }
+.pkf-manual-loc h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+.pkf-manual-loc p { color: #b9bcc2; font-size: 0.88rem; margin-bottom: 14px; line-height: 1.5; }
+.pkf-manual-loc .pkf-close { align-self: flex-end; background: none; border: 0; color: #b9bcc2; font-size: 22px; cursor: pointer; margin-bottom: 4px; }
+.pkf-manual-input-lbl { display: block; font-size: 0.78rem; color: #8b939d; margin-bottom: 6px; }
+.pkf-manual-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.pkf-manual-row input {
+  flex: 1; min-width: 0; background: #161c23; border: 1px solid #262d36; border-radius: 10px;
+  color: #fff; padding: 11px 12px; font: inherit; font-size: 0.9rem;
+}
+.pkf-manual-row .pkf-btn-primary { padding: 11px 16px; font-size: 0.85rem; flex: none; }
+.pkf-manual-err { color: #e0715a; font-size: 0.82rem; min-height: 1.2em; margin-bottom: 8px; }
+.pkf-manual-quickpicks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.pkf-manual-quickpicks button {
+  background: rgba(255,255,255,0.06); color: #e9eae5; border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 20px; font: inherit; font-size: 0.8rem; padding: 8px 14px; cursor: pointer;
+}
+.pkf-manual-quickpicks button:hover, .pkf-manual-quickpicks button:focus-visible { background: rgba(217,161,59,0.16); border-color: #d9a13b; }
+
+/* ---- Stage 5: map mode (camera denied fallback, t5-1/t5-2) ---- */
+.pkf-map-view { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; background: #0a0d11; }
+.pkf-map-view[hidden] { display: none; }
+.pkf-map-topbar {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 10px;
+}
+.pkf-map-title { font-size: 1.05rem; font-weight: 800; }
+.pkf-map-sub { font-size: 0.78rem; color: #8b939d; margin-top: 2px; max-width: 32ch; }
+.pkf-map-plot-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8px 16px; min-height: 0; }
+.pkf-map-plot { width: 100%; max-width: 420px; aspect-ratio: 1; }
+.pkf-map-plot .ring { fill: none; stroke: rgba(255,255,255,0.1); }
+.pkf-map-plot .ring-lbl { fill: rgba(255,255,255,0.4); font-size: 6px; font-family: "IBM Plex Mono", monospace; }
+.pkf-map-plot .card-line { stroke: rgba(255,255,255,0.16); stroke-width: 0.6; }
+.pkf-map-plot .card-lbl { fill: rgba(255,255,255,0.55); font-size: 7px; font-weight: 700; font-family: inherit; text-anchor: middle; }
+.pkf-map-plot .you { fill: #d9a13b; }
+.pkf-map-plot .peak-dot { fill: #57c98a; cursor: pointer; }
+.pkf-map-plot .peak-lbl { fill: #e9eae5; font-size: 5.5px; font-family: inherit; pointer-events: none; }
+.pkf-map-view .pkf-status-chip { position: static; padding: 0 16px 6px; justify-content: center; }
+.pkf-map-view .pkf-actionbar { position: static; padding-bottom: calc(env(safe-area-inset-bottom) + 14px); }
+
+/* ---- Stage 5: low-accuracy banner (t5-2) ---- */
+.pkf-low-acc-banner {
+  position: absolute; top: 92px; left: 14px; right: 14px; z-index: 21;
+  background: rgba(230,169,75,0.16); border: 1px solid rgba(230,169,75,0.4); color: #f0c988;
+  border-radius: 10px; padding: 9px 12px; font-size: 0.78rem; line-height: 1.4; text-align: center;
+}
+.pkf-low-acc-banner[hidden] { display: none; }
+
+/* ---- Stage 5: accessible peak list (t5-5) ---- */
+.pkf-peak-list {
+  position: absolute; inset: 0; z-index: 56; display: none; flex-direction: column;
+  background: rgba(8,11,14,0.96); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  padding: calc(env(safe-area-inset-top) + 18px) 18px 18px; pointer-events: auto;
+}
+.pkf-peak-list[hidden] { display: none; }
+.pkf-peak-list.show { display: flex; }
+.pkf-peak-list h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+.pkf-peak-list .pkf-peak-list-hint { color: #8b939d; font-size: 0.8rem; margin-bottom: 10px; }
+.pkf-peak-list .pkf-close { align-self: flex-end; background: none; border: 0; color: #b9bcc2; font-size: 22px; cursor: pointer; margin-bottom: 4px; }
+.pkf-peak-list ul { list-style: none; overflow-y: auto; flex: 1; border: 1px solid #262d36; border-radius: 12px; }
+.pkf-peak-list li { border-top: 1px solid #1c222a; }
+.pkf-peak-list li:first-child { border-top: 0; }
+.pkf-peak-list button {
+  display: block; width: 100%; text-align: left; background: none; border: 0;
+  color: #fff; font: inherit; font-size: 0.88rem; padding: 12px 14px; cursor: pointer;
+}
+.pkf-peak-list button:hover, .pkf-peak-list button:focus-visible { background: rgba(217,161,59,0.12); }
+.pkf-peak-list small { display: block; color: #8b939d; font-family: "IBM Plex Mono", monospace; font-size: 10.5px; margin-top: 2px; }
 
 /* Peak Finder sits on a fixed dark HUD regardless of site theme — the shared
    bottom-nav needs a matching dark treatment here, not the theme-following one. */
