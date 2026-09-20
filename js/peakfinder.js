@@ -163,6 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
     $("pkfMapNupToggle").classList.toggle("on", mapNupManual);
     $("pkfMapNupToggle").setAttribute("aria-pressed", String(mapNupManual));
     $("pkfMapNupToggle").textContent = mapNupManual ? "Use compass" : "Manual N-up";
+    renderMapPlot(); // immediate visual feedback rather than waiting for the next loop tick
+    startMapLoopIfNeeded(); // resumes the animation loop if we just switched back to live compass
   });
   $("pkfMapTryCamBtn").addEventListener("click", async () => {
     try { await startCamera(); S.hasCamera = true; await enterArView(); }
@@ -287,10 +289,22 @@ async function enterMapMode() {
   renderMapPlot();
   autoPrepareArmed = true;
   autoPrepareTick();
-  requestAnimationFrame(mapLoop);
+  startMapLoopIfNeeded();
+}
+/* Only the live-compass case has anything that changes frame to frame — a
+   manual/no-compass N-up plot is 100% static between a peaks-load and the
+   next one. Rebuilding ~150+ SVG nodes with fresh click listeners on every
+   one of them, 20 times a second, forever, for a plot that never visually
+   changes was real, found live: it was busy enough to make the Peak list
+   button feel unresponsive. So the loop simply doesn't run at all unless
+   there's an actual heading to track, and stops itself the moment that
+   stops being true. */
+function startMapLoopIfNeeded() {
+  if (S.hasOrientation && !mapNupManual) requestAnimationFrame(mapLoop);
 }
 function mapLoop(ts) {
   if ($("pkfMapView").hidden) return; // left map mode — stop this loop, the AR loop (if any) runs independently
+  if (!S.hasOrientation || mapNupManual) return; // nothing left to animate — stop rather than spin forever for no reason
   requestAnimationFrame(mapLoop);
   if (ts - S.lastMapRenderAt < currentFrameInterval()) return;
   S.lastMapRenderAt = ts;
@@ -578,7 +592,13 @@ async function autoPrepareTick() {
   if (now - lastAutoTickAt < AUTO_TICK_MIN_INTERVAL_MS) return;
   lastAutoTickAt = now;
   const result = await PeakStore.autoPrepareIfNeeded(S.pos, { radiusKm: PREPARE_RADIUS_KM, onStatus: onPrepStatus });
-  if (result && result.fetched > 0) await loadPeaksForCurrentArea();
+  if (result && result.fetched > 0) {
+    await loadPeaksForCurrentArea();
+    // Map mode's loop may not be running at all right now (no live compass to
+    // animate) — explicitly repaint so freshly-loaded peaks actually appear
+    // instead of waiting for a loop tick that might never come.
+    if (!$("pkfMapView").hidden) renderMapPlot();
+  }
   await refreshStaleChip();
 }
 function onPrepStatus(evt) {

@@ -717,3 +717,47 @@ actionable to tell the user), while location-denied *does* show a visible
 error and the "No GPS?" link, because that failure has no automatic
 substitute and genuinely needs the user to act. Both are intentional, not
 inconsistent.
+
+## Stage 5 — bug found in real testing: map mode became unresponsive with a large real dataset
+
+Reported live: the Peak list button worked with an earlier, smaller test
+but "became static and non-clickable" after a slow (2-3 minute, real
+Overpass conditions) manual-location prepare that landed 170 real peaks
+(Munsiyari area, India/Nepal/Tibet border — a genuinely dense region).
+
+Root cause: `mapLoop()` called `renderMapPlot()` unconditionally on every
+animation frame (up to 20/sec), and `renderMapPlot()` tears down and fully
+rebuilds the *entire* plot every time — every dot, every label, and a
+fresh click listener on every dot. With 170 peaks that's hundreds of SVG
+nodes recreated continuously, **forever, even when nothing could possibly
+change** — the test had no live compass and a static manual location, so
+the plot was 100% visually static the whole time, yet still being torn
+down and rebuilt 20 times a second. That's almost certainly what made the
+Peak list button feel unresponsive — not broken, just starved, competing
+with a main thread that was busy doing pointless work.
+
+Fix, in `js/peakfinder.js`: the animation loop now only runs at all when
+there's an actual live heading to track (`S.hasOrientation && !mapNupManual`)
+— it stops itself the instant that's no longer true, and
+`startMapLoopIfNeeded()` restarts it if the user switches back to live
+compass via the N-up toggle. Since the loop no longer fires on every
+frame unconditionally, two places now explicitly trigger a repaint instead
+of relying on it: the N-up toggle itself (immediate feedback), and
+`autoPrepareTick()` when new peaks actually finish loading (previously
+relied on the loop picking it up within the next ~50ms, which no longer
+holds now that the loop may not be running at all).
+
+**Also, for the record — not a bug:** the radial plot was never designed
+to be pannable/draggable (the blueprint's own words: "no basemap" — it's
+a simple schematic, not an interactive map). Tapping any dot (labelled or
+not) opens the full detail sheet, and the Peak list button gives the
+complete text list — between those two, all 170 peaks are reachable even
+though only the nearest 15 get an on-canvas label.
+
+**Separately noted, not acted on:** testing in Safari (which had
+accumulated months of prior-stage IndexedDB data) behaved differently
+from a fresh Chrome-on-iOS session — expected, since iOS sandboxes each
+browser app's storage completely separately even though they share the
+same WebKit engine. Recommended clearing Safari's site data for a clean
+comparable test rather than switching browsers (Chrome-on-iOS tabs aren't
+visible in Mac Safari's Web Inspector, so switching loses log visibility).
