@@ -149,7 +149,22 @@ function tileKeyIfExact(bbox) {
   return isTile ? Math.round(bbox.s * 10) / 10 + "_" + Math.round(bbox.w * 10) / 10 : null;
 }
 
+/* Stage 6, t6-8: no third-party analytics service, no database — Vercel's
+   own function logs are already free and already there. One structured
+   line per request, greppable by the "[telemetry]" prefix in the Vercel
+   dashboard's log viewer, is enough to answer both things the DoD asks
+   for: Overpass call volume (source=osm vs source=fallback — every
+   non-cache-hit request calls Overpass regardless of source, so total
+   line count IS the call volume) and error rate (fraction with
+   degraded=true). Deliberately not logging bbox/tileKey here — that's the
+   client's business, this is provider-health telemetry, not usage
+   tracking. */
+function logTelemetry(fields) {
+  console.log("[telemetry] peaks " + Object.keys(fields).map((k) => k + "=" + fields[k]).join(" "));
+}
+
 module.exports = async (req, res) => {
+  const startedAt = Date.now();
   const q = req.query || {};
   const parsed = parseBbox(q.bbox);
   if (parsed.error) { res.status(400).json({ error: parsed.error }); return; }
@@ -167,6 +182,7 @@ module.exports = async (req, res) => {
 
     res.setHeader("Cache-Control", "public, s-maxage=86400, stale-while-revalidate=604800");
     res.status(200).json({ ...base, source: "osm", count: peaks.length, peaks });
+    logTelemetry({ source: "osm", degraded: false, count: peaks.length, ms: Date.now() - startedAt });
   } catch (e) {
     const peaks = FALLBACK
       .filter((p) => p.lat >= bbox.s && p.lat <= bbox.n && p.lon >= bbox.w && p.lon <= bbox.e)
@@ -191,5 +207,6 @@ module.exports = async (req, res) => {
       count: peaks.length,
       peaks,
     });
+    logTelemetry({ source: "fallback", degraded: true, providerError: JSON.stringify(String((e && e.message) || e)), count: peaks.length, ms: Date.now() - startedAt });
   }
 };

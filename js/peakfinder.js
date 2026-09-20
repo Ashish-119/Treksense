@@ -22,6 +22,36 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 
+/* ---------- telemetry (Stage 6, t6-8) ----------
+   Error rate + real prepare outcomes, sent to /api/telemetry — which just
+   logs a structured line to Vercel's own (free) function logs. No
+   analytics SDK, no tracking beyond that. Registered before anything else
+   in this file runs, so an error during boot itself still gets reported,
+   not just ones after DOMContentLoaded. Telemetry must never itself be a
+   source of bugs — every call is wrapped so a failure here is silent. */
+function sendTelemetry(type, data) {
+  try {
+    const payload = JSON.stringify({
+      type: type,
+      message: (data && data.message) || "",
+      context: (data && data.context) || null,
+      path: location.pathname,
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/telemetry", new Blob([payload], { type: "application/json" }));
+    } else {
+      fetch("/api/telemetry", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+    }
+  } catch (e) { /* telemetry must never break the app */ }
+}
+window.addEventListener("error", (e) => {
+  sendTelemetry("js-error", { message: e.message, context: { at: (e.filename || "") + ":" + e.lineno } });
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const reason = e.reason;
+  sendTelemetry("unhandled-rejection", { message: String((reason && reason.message) || reason) });
+});
+
 /* ---------- constants ---------- */
 const EARTH_R_KM = 6371;
 const R_EFF_M = EARTH_R_KM * 1000 * (7 / 6); // curvature + standard refraction
@@ -641,6 +671,15 @@ async function autoPrepareTick() {
   if (now - lastAutoTickAt < AUTO_TICK_MIN_INTERVAL_MS) return;
   lastAutoTickAt = now;
   const result = await PeakStore.autoPrepareIfNeeded(S.pos, { radiusKm: PREPARE_RADIUS_KM, onStatus: onPrepStatus });
+  // Only real attempts, not no-op skips (not-needed/already-running/backoff/
+  // offline) — those aren't failures, they're the drift detector correctly
+  // doing nothing, and would just be noise here.
+  if (result && !result.skipped) {
+    sendTelemetry("prepare-outcome", { context: {
+      fetched: result.fetched, failed: result.failed, evicted: result.evicted,
+      aborted: !!result.aborted, reason: result.reason,
+    } });
+  }
   if (result && result.fetched > 0) {
     await loadPeaksForCurrentArea();
     // Map mode's loop may not be running at all right now (no live compass to

@@ -151,6 +151,30 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, "t": int(datetime.datetime.now().timestamp() * 1000)})
         return super().do_GET()
 
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path.rstrip("/") == "/api/telemetry":
+            return self._telemetry()
+        self.send_response(404)
+        self.end_headers()
+
+    def _telemetry(self):
+        # Mirrors api/telemetry.js: log a structured line, no storage, no
+        # third-party service — this Python server is only a local stand-in
+        # for the real Vercel function, so it just prints instead of relying
+        # on a dashboard that doesn't exist locally.
+        length = int(self.headers.get("Content-Length", 0))
+        raw = self.rfile.read(length) if length else b""
+        try:
+            body = json.loads(raw.decode("utf-8")) if raw else {}
+        except Exception:
+            body = {}
+        print(f"[telemetry] client type={body.get('type', 'unknown')} "
+              f"message={body.get('message', '')!r} context={body.get('context')!r} "
+              f"path={body.get('path', '')!r}", flush=True)
+        self.send_response(204)
+        self.end_headers()
+
     def _peaks(self, qs):
         bbox, err = parse_bbox(qs.get("bbox", [None])[0])
         if err:

@@ -11,7 +11,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
 | **4** | Automatic rolling window | ✅ done | 2026‑09‑19 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Verified on the test harness (two real routes, several real bugs found and fixed) and on `peak-finder.html` itself on a phone — chip correctly cycles "no peaks prepared" → "preparing…" → "prepared just now · here" with zero taps. |
 | **5** | Fallbacks, polish, a11y | ✅ done | 2026‑09‑20 | Map mode (camera/compass denied), manual location entry (GPS denied), accessible peak list, permission priming, low-accuracy banner, horizon placement for unknown-elevation peaks, PWA manifest/icons/service-worker registration. Verified end-to-end on a real device: camera-denied → map mode, GPS-denied → manual location, offline load via Airplane Mode, Lighthouse (99/94/100/100 on `peak-finder.html`), manifest installability, N-up toggle + live rotation, and three real bugs found through live testing and fixed (map-mode responsiveness twice, untappable dots, manifest icon error). |
-| **6** | Field test → harden → launch | ⬜ not started | — | |
+| **6** | Field test → harden → launch | 🟡 telemetry done, field testing awaits you | 2026‑09‑20 | `api/telemetry.js` (client error rate) + structured logging in `api/peaks.js` (Overpass call volume/health) — both just log to Vercel's own free function logs, no new service. **Everything else in this stage (t6-1..t6-7) is field testing on a real trek/outdoor viewpoint — nothing here can be built or verified from where I'm working.** See below for the protocol. |
 
 **Legend:** ⬜ not started · 🟡 in progress · ✅ done · 🔴 blocked
 
@@ -884,3 +884,113 @@ continuous re-render loop; second, more subtly: the same loop's per-frame
 cost even when it correctly needed to keep running) and untappable dots
 below Apple's minimum touch target. **Stage 5's DoD is fully met.** Next:
 Stage 6 (field test → harden → launch), whenever ready to start it.
+
+## Stage 6 — what shipped (t6-8: telemetry)
+
+No third-party analytics service, no database — same philosophy as
+everything else in this project: use what's already free rather than add
+infrastructure. Both halves of the DoD's telemetry requirement now log
+structured, greppable lines straight to Vercel's own function logs
+(Project → your deployment → Logs, or `vercel logs` if you use the CLI):
+
+- **Overpass call volume + health — `api/peaks.js`.** Every request now
+  logs one `[telemetry] peaks source=... degraded=... count=... ms=...`
+  line. `source=osm` = a real Overpass call; `source=fallback` (always
+  paired with `degraded=true`) = Overpass failed and the bundled dataset
+  covered for it. Counting lines gives call volume; the fraction with
+  `degraded=true` gives the provider's real-world failure rate — exactly
+  what's been informally observed all through this project (Overpass is
+  usually fine, sometimes 20-40s slow, occasionally down) now has an
+  actual number behind it instead of anecdote.
+- **Client-side error rate — new `api/telemetry.js`, called from
+  `js/peakfinder.js`.** `window.onerror` and `unhandledrejection` are
+  wired up right at the top of the file (before anything else runs, so a
+  boot-time error still gets reported), plus every *real* prepare attempt
+  (not the no-op skips like "not-needed" or "backoff") reports its
+  outcome — fetched/failed/evicted/aborted counts. Sent via
+  `navigator.sendBeacon` (falls back to a `keepalive` fetch) so it can't
+  block or crash the page it's reporting on. The endpoint itself never
+  trusts its input — every field is whitelisted and length-capped before
+  it's logged, since it's a public, unauthenticated URL.
+- `scripts/dev-server.py` got a matching `/api/telemetry` route (prints
+  the same structured line locally, since there's no Vercel dashboard to
+  check against on localhost) — the local emulator had no POST handling
+  of any kind before this, only GET.
+- `SW_VERSION` → `pf-stage6-v1` (`peakfinder.js` changed).
+
+**Ask for you, once this is live:** trigger a couple of real events (a
+denied-permission flow, a manual location prepare) and then check
+Vercel's dashboard Logs tab for `[telemetry]` lines — that's the
+confirmation the whole pipeline works end to end, not just that the code
+compiles.
+
+## Stage 6 — field test protocol (this is the whole rest of the stage — yours)
+
+Unlike every earlier stage, t6-1 through t6-7 aren't things I can build —
+they're real-world verification on an actual outdoor viewpoint with real
+distant peaks. Two of them are effectively already answered by testing
+we've already done; the rest need a genuine trip outdoors.
+
+**t6-1, indoor smoke test (5 minutes, do this first, before leaving):**
+Open `peak-finder.html`, grant everything, confirm the camera view comes
+up and peak labels render (even if 0 peaks — that's fine indoors). This
+is just confirming nothing regressed since Stage 5, a sanity check before
+you go to the trouble of getting outside.
+
+**t6-2, urban outdoor — heading stability against a known bearing:**
+Stand somewhere you can sight a landmark whose true bearing from your
+position you can look up independently (a distant tower, a specific
+building corner — Google Maps' measure-distance tool gives you the true
+bearing between two points). Hold the phone level, note what heading
+number Peak Finder shows for that landmark. It should match the known
+bearing within roughly the accuracy budget from the blueprint's own
+numbers (a few degrees on a good compass fix), and — separately — it
+should **not visibly drift while you stand still** holding the phone
+steady for 30-60 seconds. Log: known bearing, phone's reading, drift
+observed (yes/no, roughly how much).
+
+**t6-3, open-area — identify ≥3 real peaks (the actual DoD requirement):**
+From a real viewpoint with named Himalayan peaks actually visible (this
+is the one that needs a genuine trip, not something testable from a
+city), point the phone at the skyline with no special setup beyond the
+normal calibration you'd naturally do. For each peak you can independently
+verify (a signboard, a known panorama, local knowledge, or a second
+mapping app for cross-reference): log the peak's name, what Peak Finder
+labelled at that position, and the offset in degrees if they don't match
+exactly. **You need ≥3 correct identifications for the DoD to be met** —
+more is better, since this data directly feeds t6-7 (tuning) below.
+
+**t6-4, offline — already confirmed, worth one more explicit check:**
+This was already validated in Stage 5 (Airplane Mode after a prepare,
+peaks loaded fine). While you're out for t6-2/t6-3 anyway, once an area's
+prepared, flip Airplane Mode on and confirm the same holds at a real
+mountain viewpoint, not just at your desk. Quick, not a new investigation.
+
+**t6-5, recovery — travel, reconnect, auto-refresh:** if your t6-2/t6-3
+trip involves moving more than ~15 km (the drift threshold) between
+stops — which it very likely will if you're covering a real viewpoint —
+just watching the staleness chip during that trip *is* this test. Confirm
+it re-prepares automatically as you go (no manual action), and check the
+"Tiles in store" behavior isn't growing unbounded — Stage 2/4 already
+proved the eviction logic works, this is just confirming it still holds
+on a real trek rather than a simulated route.
+
+**t6-6, failure paths — already substantially covered:** provider
+timeout (Stage 4, extensively — Overpass's real-world slowness is
+well-documented in this log already), denied location (Stage 5), denied
+camera (Stage 5), no compass (Stage 5). The one piece not explicitly
+re-confirmed: an "empty bbox" (an area with genuinely zero real peaks) —
+already implicitly tested many times this project (every indoor/urban
+test showed "0 peaks loaded" cleanly, never an error), so this is really
+just a formality to tick off rather than new work.
+
+**t6-7, tuning — comes after t6-2/t6-3's data, not before.** Once there's
+a real accuracy log (known-bearing offset, ≥3 peak ID offsets), I'll look
+at whether `DEFAULT_HFOV` (55°), the refraction constant in
+`elevationAngleDeg()`, or `DRIFT_KM` (15) need adjusting based on what the
+real numbers show — not worth guessing at now without that data.
+
+**Format for logging results:** whatever's easiest for you — screenshots
+with a note of what you were sighting, a simple table, even just typed
+out here in conversation like every other stage. I'll fold it into
+BUILD-LOG once you have it, same as always.
