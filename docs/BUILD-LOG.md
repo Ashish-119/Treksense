@@ -825,3 +825,46 @@ screenshots) needs `screenshots` entries in the manifest, which we don't
 have — the page is still fully installable without them, just with the
 plain/standard install prompt instead of the richer one. Not building
 this now; flagging so it reads as a scope decision, not an oversight.
+
+## Stage 5 — the map-mode performance fix needed a second pass
+
+The earlier fix (stop the animation loop entirely when there's nothing to
+animate) only covered the *static* case — no live compass, or Manual N-up
+locked. Live testing on the real deployment with camera denied but
+location + motion granted put it back in exactly the failure mode from
+before: a live compass **correctly** keeps the loop running continuously
+to track rotation, and every one of those frames was still doing a full
+teardown-and-rebuild of the whole plot (worse than before, since the
+tappable-dot fix roughly doubled the element count with invisible hit
+circles). Confirmed live: rotation itself tracked phone movement
+correctly the whole time — proof the loop was running fine — while Peak
+list, Try camera again, and the N-up toggle were all completely
+unresponsive simultaneously, the same "main thread busy doing pointless
+repeated work" signature as the original bug.
+
+Real fix this time, not a workaround: separated **building** the plot
+(every dot, label, hit-circle, listener — expensive, but only needs to
+happen once per actual data change) from **rotating** it (cheap, needs to
+happen every frame while tracking). Everything that depends on heading —
+the cardinal N/E/S/W markers and every peak marker — now lives inside one
+SVG `<g>` built at a fixed north-up baseline; the per-frame loop
+(`mapLoop()`) just sets that single group's `transform="rotate(...)"`
+attribute instead of recreating ~200 DOM nodes with fresh listeners 20
+times a second. Verified the math is equivalent to the old per-point
+formula (SVG's rotation matrix distributes over a group exactly like
+adding the same angle to each point individually would), not just visually
+similar. Range rings and the centre "you" marker don't depend on heading
+at all, so they stay outside the rotating group and are never touched by
+the per-frame update. `renderMapPlot()` stays the public entry point
+everything else calls (N-up toggle, `autoPrepareTick()` on new data);
+internally it now just does one full build + one rotation update, same as
+before for those less-frequent callers — only the continuous per-frame
+path changed.
+
+Also clarified during this round: testing briefly hit
+`ashish-119.github.io/Treksense/` — a separate, live, auto-updating
+GitHub Pages mirror of this repo with no backend at all (`/api/peaks` and
+`/api/ping` both 404 there), unrelated to Vercel and apparently
+publicly reachable this whole time. Not a code issue, but worth the user
+checking their repo's Pages settings — flagged, not acted on (repo
+configuration, not code).

@@ -308,7 +308,12 @@ function mapLoop(ts) {
   requestAnimationFrame(mapLoop);
   if (ts - S.lastMapRenderAt < currentFrameInterval()) return;
   S.lastMapRenderAt = ts;
-  renderMapPlot();
+  // Just the rotation, not a full rebuild — see the note on buildMapPlot()
+  // below. This runs up to 20x/sec while a live compass is tracking, so it
+  // has to be cheap; a single attribute write on an existing element is,
+  // rebuilding ~200 DOM nodes with fresh listeners every frame is not (that
+  // was exactly what made the action buttons unresponsive, twice now).
+  updateMapRotation(computeTrueHeading() || 0);
 }
 const MAP_MAX_LABELS = 15; // beyond this, a dense area (100+ real peaks isn't rare
                             // near the Himalaya) turns into illegible overlapping
@@ -316,12 +321,25 @@ const MAP_MAX_LABELS = 15; // beyond this, a dense area (100+ real peaks isn't r
                             // collision-avoidance, solved here by simply not
                             // labelling past the nearest N; every peak still gets
                             // a tappable dot, and the full list lives in Peak list.
-function renderMapPlot() {
+const MAP_R = 95;
+/* Builds every DOM node in the plot ONCE per actual data change (new peaks
+   loaded, N-up toggled) — dots, hit circles, labels, listeners, all of it.
+   Positions are computed as if heading were 0 (true-north-up baseline);
+   everything that needs to rotate with the compass (cardinal markers +
+   every peak) lives inside one <g>, and updateMapRotation() below just sets
+   that single group's transform on each animation frame instead of
+   recreating any of this. Range rings and the centre "you" dot don't
+   depend on heading at all, so they sit outside the rotating group and
+   are never touched by rotation updates either. */
+function buildMapPlot() {
   const svg = $("pkfMapPlot");
   const ns = "http://www.w3.org/2000/svg";
   svg.innerHTML = "";
-  const R = 95;
-  const rotate = (mapNupManual || !S.hasOrientation) ? 0 : (computeTrueHeading() || 0);
+  const mkEl = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  };
   // Capped, not just the raw max: a single outlier peak at, say, 140 km used to
   // stretch the whole scale, crushing every nearer peak into an unreadable knot
   // near the centre. PREPARE_RADIUS_KM is the disc we actually keep prepared,
@@ -329,36 +347,32 @@ function renderMapPlot() {
   const rawMax = S.pos ? Math.max(0, ...S.peaks.map((p) => haversineKm(S.pos, p))) : 25;
   const maxDist = Math.min(PREPARE_RADIUS_KM, Math.max(25, rawMax));
 
-  const mkEl = (tag, attrs) => {
-    const el = document.createElementNS(ns, tag);
-    for (const k in attrs) el.setAttribute(k, attrs[k]);
-    return el;
-  };
   [0.34, 0.67, 1].forEach((frac) => {
-    const r = frac * R;
+    const r = frac * MAP_R;
     svg.appendChild(mkEl("circle", { class: "ring", cx: 0, cy: 0, r: r }));
     const lbl = mkEl("text", { class: "ring-lbl", x: 3, y: -r + 8 });
     lbl.textContent = Math.round(maxDist * frac) + " km";
     svg.appendChild(lbl);
   });
+
+  const rotGroup = mkEl("g", { class: "map-rot-group" });
   ["N", "E", "S", "W"].forEach((card, i) => {
-    const ang = toRad(i * 90 - rotate - 90);
-    const x2 = Math.cos(ang) * R, y2 = Math.sin(ang) * R;
-    svg.appendChild(mkEl("line", { class: "card-line", x1: 0, y1: 0, x2: x2, y2: y2 }));
-    const lx = Math.cos(ang) * (R + 8), ly = Math.sin(ang) * (R + 8);
+    const ang = toRad(i * 90 - 90);
+    const x2 = Math.cos(ang) * MAP_R, y2 = Math.sin(ang) * MAP_R;
+    rotGroup.appendChild(mkEl("line", { class: "card-line", x1: 0, y1: 0, x2: x2, y2: y2 }));
+    const lx = Math.cos(ang) * (MAP_R + 8), ly = Math.sin(ang) * (MAP_R + 8);
     const lbl = mkEl("text", { class: "card-lbl", x: lx, y: ly + 2 });
     lbl.textContent = card;
-    svg.appendChild(lbl);
+    rotGroup.appendChild(lbl);
   });
-  svg.appendChild(mkEl("circle", { class: "you", cx: 0, cy: 0, r: 4 }));
 
   if (S.pos) {
     const withDist = S.peaks
       .map((p) => ({ p: p, dist: haversineKm(S.pos, p), brg: bearingDeg(S.pos, p) }))
       .sort((a, b) => a.dist - b.dist);
     withDist.forEach((v, i) => {
-      const r = Math.min(R, (v.dist / maxDist) * R);
-      const ang = toRad(v.brg - rotate - 90);
+      const r = Math.min(MAP_R, (v.dist / maxDist) * MAP_R);
+      const ang = toRad(v.brg - 90);
       const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
       const labelled = i < MAP_MAX_LABELS;
       const onTap = () => openSheet(v.p, v.dist, v.brg);
@@ -371,10 +385,10 @@ function renderMapPlot() {
       // purely cosmetic, drawn on top of it.
       const hit = mkEl("circle", { class: "peak-hit", cx: x, cy: y, r: 9 });
       hit.addEventListener("click", onTap);
-      svg.appendChild(hit);
+      rotGroup.appendChild(hit);
 
       const dot = mkEl("circle", { class: "peak-dot" + (labelled ? "" : " dim"), cx: x, cy: y, r: labelled ? 3 : 2 });
-      svg.appendChild(dot);
+      rotGroup.appendChild(dot);
 
       if (labelled) {
         // The label text is bigger and more obvious to tap than the dot
@@ -383,13 +397,32 @@ function renderMapPlot() {
         const lbl = mkEl("text", { class: "peak-lbl", x: x + 5, y: y + 2 });
         lbl.textContent = v.p.name;
         lbl.addEventListener("click", onTap);
-        svg.appendChild(lbl);
+        rotGroup.appendChild(lbl);
       }
     });
   }
+  svg.appendChild(rotGroup);
+  svg.appendChild(mkEl("circle", { class: "you", cx: 0, cy: 0, r: 4 })); // heading-independent, drawn last (on top)
+
   $("pkfMapDataChip").textContent = S.peaks.length + " peak" + (S.peaks.length === 1 ? "" : "s") + " loaded"
     + (S.peaks.length > MAP_MAX_LABELS ? " (" + MAP_MAX_LABELS + " nearest labelled)" : "");
   $("pkfMapPosChip").textContent = S.pos ? (S.pos.manual ? "manual location" : (S.pos.acc ? "±" + Math.round(S.pos.acc) + " m" : "GPS ok")) : "locating…";
+}
+/* Points inside the rotating group were built at (bearing - 90), i.e. as if
+   heading were 0. Applying rotate(-heading) to the whole group lands every
+   point at its real (bearing - heading - 90) position — the SVG rotation
+   matrix distributes over the group exactly like adding -heading to each
+   point's own angle would, so this is mathematically identical to the old
+   per-point formula, just computed once for the whole group instead of once
+   per point per frame. */
+function updateMapRotation(heading) {
+  const g = document.querySelector("#pkfMapPlot .map-rot-group");
+  if (g) g.setAttribute("transform", "rotate(" + (-heading) + ")");
+}
+function renderMapPlot() {
+  buildMapPlot();
+  const rotate = (mapNupManual || !S.hasOrientation) ? 0 : (computeTrueHeading() || 0);
+  updateMapRotation(rotate);
 }
 
 async function requestOrientationPermission() {
