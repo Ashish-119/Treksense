@@ -15,7 +15,7 @@
    see BUILD-LOG).
    ============================================================ */
 
-const SW_VERSION = "pf-stage5-v1";
+const SW_VERSION = "pf-stage5-v2";
 const SHELL_CACHE = "ts-shell-" + SW_VERSION;
 const API_CACHE = "ts-api-" + SW_VERSION;
 const RUNTIME_CACHE = "ts-runtime-" + SW_VERSION;

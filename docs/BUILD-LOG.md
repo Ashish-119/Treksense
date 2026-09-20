@@ -689,3 +689,31 @@ paths need a way to actually deny each permission, which usually means
 resetting the site's permissions between tests (browser site-settings, or
 a fresh Incognito window per test) rather than relying on whatever you
 answered the first time.
+
+## Stage 5 — bug found in real testing: map mode unreadable at high peak density
+
+First real device test (iPhone, Safari + Web Inspector, both camera and
+location denied → manual location → a genuinely dense real area, 141
+peaks) surfaced a real gap: `renderMapPlot()` labelled every single peak
+unconditionally. The AR camera view already solves exactly this problem —
+`placeLabels()` pushes overlapping labels apart — but that logic never got
+carried into map mode, so 141 names piled on top of each other into
+illegible noise. A separate, compounding issue: the plot's distance scale
+was set by the single farthest peak in range (seen live at "147 km"),
+which crushed everything nearer into a tight knot near the centre.
+
+Fix, both in `renderMapPlot()`: **(1)** peaks are now sorted by distance
+and only the nearest `MAP_MAX_LABELS` (15) get a text label; every peak
+still gets a tappable dot (dimmer past the labelled cutoff), and the full
+list remains one tap away via **Peak list**. **(2)** the distance scale is
+now capped at `PREPARE_RADIUS_KM` (100 km) regardless of how far the
+single farthest peak is, so a rare distant outlier can't compress
+everything else near the centre.
+
+Also confirmed working correctly by this same test round, worth recording
+since it wasn't obvious from the screenshots alone: camera-denied shows
+*no* visible error (silently lands in map mode — there's nothing
+actionable to tell the user), while location-denied *does* show a visible
+error and the "No GPS?" link, because that failure has no automatic
+substitute and genuinely needs the user to act. Both are intentional, not
+inconsistent.

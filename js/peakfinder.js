@@ -296,13 +296,24 @@ function mapLoop(ts) {
   S.lastMapRenderAt = ts;
   renderMapPlot();
 }
+const MAP_MAX_LABELS = 15; // beyond this, a dense area (100+ real peaks isn't rare
+                            // near the Himalaya) turns into illegible overlapping
+                            // text — same problem the AR view solves with label
+                            // collision-avoidance, solved here by simply not
+                            // labelling past the nearest N; every peak still gets
+                            // a tappable dot, and the full list lives in Peak list.
 function renderMapPlot() {
   const svg = $("pkfMapPlot");
   const ns = "http://www.w3.org/2000/svg";
   svg.innerHTML = "";
   const R = 95;
   const rotate = (mapNupManual || !S.hasOrientation) ? 0 : (computeTrueHeading() || 0);
-  const maxDist = Math.max(25, S.pos ? Math.max(0, ...S.peaks.map((p) => haversineKm(S.pos, p))) : 25);
+  // Capped, not just the raw max: a single outlier peak at, say, 140 km used to
+  // stretch the whole scale, crushing every nearer peak into an unreadable knot
+  // near the centre. PREPARE_RADIUS_KM is the disc we actually keep prepared,
+  // so it's a sensible ceiling regardless of how far the farthest peak is.
+  const rawMax = S.pos ? Math.max(0, ...S.peaks.map((p) => haversineKm(S.pos, p))) : 25;
+  const maxDist = Math.min(PREPARE_RADIUS_KM, Math.max(25, rawMax));
 
   const mkEl = (tag, attrs) => {
     const el = document.createElementNS(ns, tag);
@@ -328,21 +339,26 @@ function renderMapPlot() {
   svg.appendChild(mkEl("circle", { class: "you", cx: 0, cy: 0, r: 4 }));
 
   if (S.pos) {
-    S.peaks.forEach((p) => {
-      const dist = haversineKm(S.pos, p);
-      const brg = bearingDeg(S.pos, p);
-      const r = Math.min(R, (dist / maxDist) * R);
-      const ang = toRad(brg - rotate - 90);
+    const withDist = S.peaks
+      .map((p) => ({ p: p, dist: haversineKm(S.pos, p), brg: bearingDeg(S.pos, p) }))
+      .sort((a, b) => a.dist - b.dist);
+    withDist.forEach((v, i) => {
+      const r = Math.min(R, (v.dist / maxDist) * R);
+      const ang = toRad(v.brg - rotate - 90);
       const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
-      const dot = mkEl("circle", { class: "peak-dot", cx: x, cy: y, r: 3 });
-      dot.addEventListener("click", () => openSheet(p, dist, brg));
+      const labelled = i < MAP_MAX_LABELS;
+      const dot = mkEl("circle", { class: "peak-dot" + (labelled ? "" : " dim"), cx: x, cy: y, r: labelled ? 3 : 2 });
+      dot.addEventListener("click", () => openSheet(v.p, v.dist, v.brg));
       svg.appendChild(dot);
-      const lbl = mkEl("text", { class: "peak-lbl", x: x + 5, y: y + 2 });
-      lbl.textContent = p.name;
-      svg.appendChild(lbl);
+      if (labelled) {
+        const lbl = mkEl("text", { class: "peak-lbl", x: x + 5, y: y + 2 });
+        lbl.textContent = v.p.name;
+        svg.appendChild(lbl);
+      }
     });
   }
-  $("pkfMapDataChip").textContent = S.peaks.length + " peak" + (S.peaks.length === 1 ? "" : "s") + " loaded";
+  $("pkfMapDataChip").textContent = S.peaks.length + " peak" + (S.peaks.length === 1 ? "" : "s") + " loaded"
+    + (S.peaks.length > MAP_MAX_LABELS ? " (" + MAP_MAX_LABELS + " nearest labelled)" : "");
   $("pkfMapPosChip").textContent = S.pos ? (S.pos.manual ? "manual location" : (S.pos.acc ? "±" + Math.round(S.pos.acc) + " m" : "GPS ok")) : "locating…";
 }
 
