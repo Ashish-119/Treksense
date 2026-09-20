@@ -1585,9 +1585,10 @@ body.fx-page-exit {
 .pkf-map-plot .card-line { stroke: rgba(255,255,255,0.16); stroke-width: 0.6; }
 .pkf-map-plot .card-lbl { fill: rgba(255,255,255,0.55); font-size: 7px; font-weight: 700; font-family: inherit; text-anchor: middle; }
 .pkf-map-plot .you { fill: #d9a13b; }
-.pkf-map-plot .peak-dot { fill: #57c98a; cursor: pointer; }
+.pkf-map-plot .peak-dot { fill: #57c98a; cursor: pointer; pointer-events: none; }
 .pkf-map-plot .peak-dot.dim { fill: rgba(87,201,138,0.45); }
-.pkf-map-plot .peak-lbl { fill: #e9eae5; font-size: 5.5px; font-family: inherit; pointer-events: none; }
+.pkf-map-plot .peak-hit { fill: transparent; cursor: pointer; pointer-events: all; }
+.pkf-map-plot .peak-lbl { fill: #e9eae5; font-size: 5.5px; font-family: inherit; cursor: pointer; pointer-events: all; }
 .pkf-map-view .pkf-status-chip { position: static; padding: 0 16px 6px; justify-content: center; }
 .pkf-map-view .pkf-actionbar { position: static; padding-bottom: calc(env(safe-area-inset-bottom) + 14px); }
 

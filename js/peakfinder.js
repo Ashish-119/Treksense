@@ -361,12 +361,28 @@ function renderMapPlot() {
       const ang = toRad(v.brg - rotate - 90);
       const x = Math.cos(ang) * r, y = Math.sin(ang) * r;
       const labelled = i < MAP_MAX_LABELS;
+      const onTap = () => openSheet(v.p, v.dist, v.brg);
+
+      // The visible dot is deliberately tiny (r=2-3 SVG units, ~5-6px on
+      // screen) so the plot doesn't turn back into a cluttered mess — but
+      // that's nowhere near Apple's own 44x44pt minimum touch target, found
+      // live to make the dots un-tappable. A separate, invisible, much
+      // larger circle carries the actual hit area; the small visible dot is
+      // purely cosmetic, drawn on top of it.
+      const hit = mkEl("circle", { class: "peak-hit", cx: x, cy: y, r: 9 });
+      hit.addEventListener("click", onTap);
+      svg.appendChild(hit);
+
       const dot = mkEl("circle", { class: "peak-dot" + (labelled ? "" : " dim"), cx: x, cy: y, r: labelled ? 3 : 2 });
-      dot.addEventListener("click", () => openSheet(v.p, v.dist, v.brg));
       svg.appendChild(dot);
+
       if (labelled) {
+        // The label text is bigger and more obvious to tap than the dot
+        // ever was, but had no click handler of its own at all — tapping it
+        // did nothing even though it looked like the obvious target.
         const lbl = mkEl("text", { class: "peak-lbl", x: x + 5, y: y + 2 });
         lbl.textContent = v.p.name;
+        lbl.addEventListener("click", onTap);
         svg.appendChild(lbl);
       }
     });

@@ -761,3 +761,35 @@ browser app's storage completely separately even though they share the
 same WebKit engine. Recommended clearing Safari's site data for a clean
 comparable test rather than switching browsers (Chrome-on-iOS tabs aren't
 visible in Mac Safari's Web Inspector, so switching loses log visibility).
+
+## Stage 5 — bug found in real testing: map mode's dots weren't actually tappable
+
+After the responsiveness fix, live testing confirmed the plot itself
+worked, but tapping a dot did nothing. Two compounding bugs, both in
+`renderMapPlot()`:
+
+1. **The visible dot was far too small to hit.** `r=2-3` SVG units on a
+   plot up to 420px wide works out to roughly 5-6px on screen — a fraction
+   of Apple's own 44x44pt minimum touch target guideline. It was never
+   reliably tappable on a real finger, mouse-click testing in a desktop
+   browser wouldn't have caught this.
+2. **The text label — the visually larger, more obvious target — had no
+   click handler at all.** Only the tiny dot did, so tapping the name
+   itself, which looks like the thing you'd tap, did nothing either.
+
+Fix: each peak now gets an invisible, generously-sized (`r=9`) hit circle
+carrying the actual click handler, layered under a purely-cosmetic small
+visible dot (`pointer-events: none`, so it doesn't shadow the hit circle).
+The text label also got its own click handler pointing at the same
+`openSheet()` call. One CSS wrinkle caught before it shipped: a
+pre-existing `.peak-lbl` rule further down the stylesheet already set
+`pointer-events: none` on labels, which would have silently cancelled the
+new handler (same specificity, later rule in the cascade wins) — merged
+into one correct rule instead of leaving two conflicting ones.
+
+Also independently confirmed in this same test round, worth recording:
+**offline mode works as designed.** Airplane Mode after preparing an area
+still loaded peaks normally — confirms the core architecture end-to-end
+on a real device: peak data downloaded once while online into IndexedDB,
+then both AR view and map mode read exclusively from that local store
+with zero network dependency at the point of actual use.
