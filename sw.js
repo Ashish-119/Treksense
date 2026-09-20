@@ -15,7 +15,7 @@
    see BUILD-LOG).
    ============================================================ */
 
-const SW_VERSION = "pf-stage5-v4";
+const SW_VERSION = "pf-stage5-v5";
 const SHELL_CACHE = "ts-shell-" + SW_VERSION;
 const API_CACHE = "ts-api-" + SW_VERSION;
 const RUNTIME_CACHE = "ts-runtime-" + SW_VERSION;
@@ -31,7 +31,6 @@ const APP_SHELL = [
   "/peak-finder.html",
   "/js/peakfinder.js",
   "/manifest.json",
-  "/icons/peak-finder-icon.svg",
   "/icons/peak-finder-icon-192.png",
   "/icons/peak-finder-icon-512.png",
   "/icons/peak-finder-icon-maskable-192.png",

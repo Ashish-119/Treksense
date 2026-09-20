@@ -793,3 +793,35 @@ still loaded peaks normally — confirms the core architecture end-to-end
 on a real device: peak data downloaded once while online into IndexedDB,
 then both AR view and map mode read exclusively from that local store
 with zero network dependency at the point of actual use.
+
+## Stage 5 — Lighthouse + manifest audit results
+
+Both run against the live site, DevTools Lighthouse tab: `plan.html` (not
+part of this feature, checked for comparison) 89/93/100/100;
+**`peak-finder.html` — 99 Performance / 94 Accessibility / 100 Best
+Practices / 100 SEO.** No PWA category shown — recent Chrome moved
+installability checks into the Application → Manifest panel instead of
+the old Lighthouse PWA score.
+
+That panel confirmed the service worker registration fix is genuinely
+live (`#28 activated and is running` for `sw.js`) and surfaced one real,
+fixable issue: **the SVG manifest icon (`peak-finder-icon.svg`, declared
+with `sizes: "any"`) failed to load in Chrome's manifest checker**, even
+though the file itself serves correctly (verified directly — HTTP 200,
+correct `image/svg+xml` content-type, valid SVG content). This is a known
+browser-side inconsistency with SVG icons under `sizes: "any"`, not a
+file/path bug. Since the manifest already declares proper PNG icons at
+192px and 512px (both `any` and `maskable` purpose) which loaded without
+issue, the SVG entry was pure redundancy — removed it from both
+`manifest.json` and `sw.js`'s `APP_SHELL` precache list rather than chase
+a browser quirk for no functional gain. Also added the manifest's
+optional `id` field (`/peak-finder.html`) per the panel's own suggestion,
+so the app's identity stays stable across any future manifest edits
+regardless of `start_url`. `SW_VERSION` → `pf-stage5-v5`.
+
+Two remaining "errors and warnings" in that panel are optional, not
+blockers: Chrome's *richer* install UI (a bigger install card with app
+screenshots) needs `screenshots` entries in the manifest, which we don't
+have — the page is still fully installable without them, just with the
+plain/standard install prompt instead of the richer one. Not building
+this now; flagging so it reads as a scope decision, not an oversight.
