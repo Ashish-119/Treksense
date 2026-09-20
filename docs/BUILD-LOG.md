@@ -10,7 +10,7 @@ Preview of the target UI: [`peak-finder-preview.html`](peak-finder-preview.html)
 | **2** | On-device store + preparation | ✅ done | 2026‑09‑16 | `js/peakstore.js` (IndexedDB) + `sw.js` + `docs/spike/stage-2-store-test.html`. DoD verified in-browser, including a real bug found and fixed mid-test. |
 | **3** | AR projection engine | 🟡 code done, awaiting your test | 2026‑09‑16 | `peak-finder.html` + `js/peakfinder.js` — real page, wired into the nav. **Zero browser testing possible on my end for this stage** (camera/GPS/orientation need a real device) — this is the riskiest handoff yet. See below. |
 | **4** | Automatic rolling window | ✅ done | 2026‑09‑19 | Manual "Prepare" button removed from the real page, replaced with an automatic drift detector + online gate/backoff in `js/peakstore.js`. Verified on the test harness (two real routes, several real bugs found and fixed) and on `peak-finder.html` itself on a phone — chip correctly cycles "no peaks prepared" → "preparing…" → "prepared just now · here" with zero taps. |
-| **5** | Fallbacks, polish, a11y | 🟡 code done, awaiting your test | 2026‑09‑19 | Map mode (camera/compass denied), manual location entry (GPS denied), accessible peak list, permission priming, low-accuracy banner, horizon placement for unknown-elevation peaks, PWA manifest/icons/service-worker registration. **Zero browser testing possible on my end** (camera/GPS/orientation need a real device, same as Stage 3) — see below. |
+| **5** | Fallbacks, polish, a11y | ✅ done | 2026‑09‑20 | Map mode (camera/compass denied), manual location entry (GPS denied), accessible peak list, permission priming, low-accuracy banner, horizon placement for unknown-elevation peaks, PWA manifest/icons/service-worker registration. Verified end-to-end on a real device: camera-denied → map mode, GPS-denied → manual location, offline load via Airplane Mode, Lighthouse (99/94/100/100 on `peak-finder.html`), manifest installability, N-up toggle + live rotation, and three real bugs found through live testing and fixed (map-mode responsiveness twice, untappable dots, manifest icon error). |
 | **6** | Field test → harden → launch | ⬜ not started | — | |
 
 **Legend:** ⬜ not started · 🟡 in progress · ✅ done · 🔴 blocked
@@ -868,3 +868,19 @@ GitHub Pages mirror of this repo with no backend at all (`/api/peaks` and
 publicly reachable this whole time. Not a code issue, but worth the user
 checking their repo's Pages settings — flagged, not acted on (repo
 configuration, not code).
+
+## Stage 5 — closed, 2026‑09‑20
+
+Retest after the rotation-group fix: radial plot rotation tracks live
+phone movement correctly, all three action buttons (Peak list, Try
+camera again, N-up toggle) stayed responsive throughout, the accessible
+peak list rendered correctly formatted entries for the already-cached
+Munsiyari data, and toggling between locked/live compass behaved exactly
+as designed (frozen when locked, tracking when live). **Every item on the
+Stage 5 test plan is now confirmed working on a real device**, including
+recovery from three real bugs found only through live testing this round
+— two rounds of map-mode responsiveness (first: an unconditional
+continuous re-render loop; second, more subtly: the same loop's per-frame
+cost even when it correctly needed to keep running) and untappable dots
+below Apple's minimum touch target. **Stage 5's DoD is fully met.** Next:
+Stage 6 (field test → harden → launch), whenever ready to start it.
