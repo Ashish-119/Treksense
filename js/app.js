@@ -36,9 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
   buildFilterChips();
   syncViewFromHash();
   window.addEventListener("hashchange", syncViewFromHash);
-
-  try { FX.starfield("#starsCanvas"); }         // decorative only — never block the treks list
-  catch (err) { console.error("starfield init failed:", err); }
 });
 
 function syncViewFromHash() {
@@ -73,8 +70,6 @@ function buildFilterChips() {
   $("#chips-sort").innerHTML = sorts.map(([v, l]) =>
     `<button class="chip ${v === state.sort ? "active" : ""}" data-sort="${v}">${l}</button>`).join("");
 
-  updateFilterCount();
-
   $("#filter-panel").addEventListener("click", e => {
     const b = e.target.closest(".chip");
     if (!b) return;
@@ -85,13 +80,6 @@ function buildFilterChips() {
     buildFilterChips();
     render();
   }, { once: false });
-}
-
-function updateFilterCount() {
-  const n = [state.difficulty, state.region, state.season].filter(v => v !== "All").length;
-  const el = $("#filter-count");
-  el.textContent = n;
-  el.hidden = n === 0;
 }
 
 function filteredTreks() {

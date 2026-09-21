@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   renderFitness();
   renderSafety();
   initScrollSpy();
-  initScrollChrome();
 
   /* motion layer */
   FX.parallax("#hero");
@@ -456,29 +455,6 @@ function renderSafety() {
       <span class="si ic-brand">${ICONS.shield}</span>
       <div><b>${s.title}</b>${s.text}</div>
     </div>`).join("");
-}
-
-/* ---------- Scroll progress bar + back-to-top (long detail page) ---------- */
-function initScrollChrome() {
-  const bar = $("#scrollProgress");
-  const btn = $("#backToTop");
-  if (!bar || !btn) return;
-
-  let ticking = false;
-  const update = () => {
-    const doc = document.documentElement;
-    const scrollTop = doc.scrollTop || document.body.scrollTop;
-    const height = doc.scrollHeight - doc.clientHeight;
-    bar.style.width = (height > 0 ? (scrollTop / height) * 100 : 0) + "%";
-    btn.classList.toggle("show", scrollTop > 500);
-    ticking = false;
-  };
-  window.addEventListener("scroll", () => {
-    if (!ticking) { requestAnimationFrame(update); ticking = true; }
-  }, { passive: true });
-  btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
-
-  update();
 }
 
 /* ---------- Scroll-spy for section nav ---------- */
