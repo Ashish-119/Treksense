@@ -84,6 +84,83 @@ const FX = (() => {
     });
   }
 
+  /* ---- Starfield: depth-parallax dots for a dark hero band ---- */
+  function starfield(selector) {
+    const canvas = document.querySelector(selector);
+    if (!canvas) return;
+    const hero = canvas.closest(".stars-hero") || canvas.parentElement;
+    const ctx = canvas.getContext("2d");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let w = 0, h = 0, stars = [];
+    const pointer = { x: 0, y: 0 };
+
+    function makeStars() {
+      const count = Math.max(40, Math.min(150, Math.round((w * h) / 2600)));
+      stars = Array.from({ length: count }, () => {
+        const depth = 0.3 + Math.random() * 0.7;      // 0.3 (far, small, slow) .. 1 (near, big, fast)
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: depth * (Math.random() * 1.1 + 0.5),
+          depth,
+          baseA: Math.random() * 0.5 + 0.35,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.15 + Math.random() * 0.35,
+          drift: (Math.random() - 0.5) * 0.05
+        };
+      });
+    }
+
+    function resize() {
+      w = hero.clientWidth;
+      h = hero.clientHeight;
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      makeStars();
+    }
+
+    function paint(t, animate) {
+      ctx.clearRect(0, 0, w, h);
+      stars.forEach(s => {
+        if (animate) {
+          s.y -= s.drift * s.depth;
+          if (s.y < -4) s.y = h + 4;
+          if (s.y > h + 4) s.y = -4;
+        }
+        const twinkle = animate ? Math.sin(t * 0.0011 * s.speed + s.phase) * 0.3 : 0;
+        const px = s.x + pointer.x * 12 * s.depth;
+        const py = s.y + pointer.y * 8 * s.depth;
+        ctx.beginPath();
+        ctx.arc(px, py, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${Math.max(0.08, s.baseA + twinkle).toFixed(2)})`;
+        ctx.fill();
+      });
+    }
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    if (reduced) { paint(0, false); return; }   // static field, no motion
+
+    if (finePointer) {
+      hero.addEventListener("mousemove", e => {
+        const r = hero.getBoundingClientRect();
+        pointer.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+        pointer.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      });
+      hero.addEventListener("mouseleave", () => { pointer.x = 0; pointer.y = 0; });
+    }
+
+    function loop(t) {
+      paint(t, true);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+
   /* ---- Page fade transitions between pages ---- */
   function pageEnter() {
     if (reduced) return;
@@ -123,7 +200,7 @@ const FX = (() => {
     });
   }
 
-  return { reveal, tilt, parallax, countUp, pageEnter, navigate, interceptLinks };
+  return { reveal, tilt, parallax, countUp, pageEnter, navigate, interceptLinks, starfield };
 })();
 
 document.addEventListener("DOMContentLoaded", () => {

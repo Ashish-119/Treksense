@@ -15,6 +15,15 @@
 </head>
 <body>
 
+  <a class="skip-link" href="#main-content">Skip to trek details</a>
+
+  <div class="page-loader" id="pageLoader" aria-hidden="true">
+    <div class="pl-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m3 19 6-11 4 7 3-5 5 9H3Z"/></svg></div>
+    <div class="pl-track"><div class="pl-fill"></div></div>
+  </div>
+
+  <div class="scroll-progress" id="scrollProgress"></div>
+
   <header class="site-header" id="site-header"></header>
 
   <div class="hero" id="hero">
@@ -49,7 +58,7 @@
     </div>
   </nav>
 
-  <main class="container detail-main">
+  <main class="container detail-main" id="main-content">
     <section class="block" id="overview">
       <div class="block-head"><h2><span class="em" data-icon="compass"></span> Overview</h2></div>
       <div class="panel">
@@ -193,6 +202,8 @@
       <strong>TrekSense</strong> — plan smarter, trek safer. Altitude &amp; oxygen figures are estimates; always follow your trek leader.
     </div>
   </footer>
+
+  <button class="back-to-top" id="backToTop" aria-label="Back to top"><span data-icon="up"></span></button>
 
   <nav class="bottom-nav" id="bottom-nav" aria-label="Primary"></nav>
 
