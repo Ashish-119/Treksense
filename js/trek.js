@@ -13,9 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#bottom-nav").innerHTML = bottomNavHTML("explore");
   updateThemeIcons();
 
-  const loader = $("#pageLoader");
-  if (loader) setTimeout(() => loader.classList.add("done"), 4000); // safety net if render throws
-
   document.title = `${trek.name} — TrekSense`;
 
   $("#back-btn").addEventListener("click", () =>
@@ -45,8 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
   FX.countUp(".s-value");
   FX.reveal("section.block .panel, .weather-now, .forecast, .g-item, .wild-card, .price-row, .safety-item", 50);
   FX.tilt(".wild-card", 9);
-
-  if (loader) loader.classList.add("done");
 });
 
 /* ---------- Hero & stats ---------- */

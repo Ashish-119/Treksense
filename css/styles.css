@@ -754,7 +754,8 @@ section.block { padding-top: 34px; scroll-margin-top: 130px; }
   position: absolute; bottom: calc(100% + 6px); left: 0;
   background: var(--ink); color: var(--bg);
   padding: 5px 10px; border-radius: 8px;
-  font-size: 0.76rem; font-weight: 600; white-space: nowrap;
+  font-size: 0.76rem; font-weight: 600;
+  max-width: min(62vw, 220px); white-space: normal;
   opacity: 0; visibility: hidden; transition: opacity 0.15s; z-index: 5;
 }
 .o2-scale {
@@ -1111,10 +1112,17 @@ body.fx-page-exit {
 .lb-stage img { width: 100%; height: auto; max-height: 78vh; object-fit: contain; display: block; background: #000; }
 
 /* ---------- Peaks Visible ---------- */
-.peaks-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-@media (min-width: 640px) { .peaks-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .peaks-grid { grid-template-columns: repeat(3, 1fr); } }
+.peaks-grid {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px 4px 14px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
 .peak-card {
+  flex: 0 0 min(74vw, 300px);
+  scroll-snap-align: start;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -1735,52 +1743,4 @@ body.fx-page-exit {
   .back-to-top { bottom: 24px; }
 }
 
-/* ---- Full-page loader (index.html + trek.html: hides the brief
-   window before render() fills the empty containers) ---- */
-.page-loader {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  background: var(--bg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-.page-loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
-.pl-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  animation: pl-bounce 1.2s ease-in-out infinite;
-}
-.pl-badge svg { width: 24px; height: 24px; }
-@keyframes pl-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-.pl-track {
-  width: 140px;
-  height: 4px;
-  border-radius: 4px;
-  background: var(--line);
-  overflow: hidden;
-}
-.pl-fill {
-  width: 40%;
-  height: 100%;
-  background: var(--brand);
-  border-radius: 4px;
-  animation: pl-slide 1.1s ease-in-out infinite;
-}
-@keyframes pl-slide {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(350%); }
-}
 .pkf-page .bottom-nav a.active svg { color: #d9a13b; }
