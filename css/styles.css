@@ -456,6 +456,32 @@ input, select { font: inherit; color: inherit; }
 .hero-btn svg { width: 22px; height: 22px; }
 .hero-btn.saved { background: #fff; color: #d33b3b; }
 .hero-btn.saved svg { fill: #d33b3b; }
+
+/* Offline-download button: lives in the sticky header next to the theme toggle,
+   so it's always at top-right through the whole scroll with nothing ever behind it */
+.dl-wrap { position: relative; display: flex; align-items: center; }
+.dl-wrap .icon-btn.busy { opacity: 0.55; pointer-events: none; }
+.dl-label {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  max-width: min(85vw, 260px);
+  transform: translateY(-50%) translateX(16px);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.dl-wrap.open .dl-label { opacity: 1; transform: translateY(-50%) translateX(0); }
 .hero-title {
   position: absolute;
   bottom: 58px;
@@ -519,16 +545,17 @@ input, select { font: inherit; color: inherit; }
   position: sticky;
   top: 64px;
   z-index: 50;
+  max-width: 1180px;
+  margin: 10px auto 0;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(12px);
   padding: 12px 0;
-  margin-top: 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 .section-nav::-webkit-scrollbar { display: none; }
 .section-nav .inner { display: flex; gap: 8px; width: max-content; padding: 0 20px; }
-@media (min-width: 1220px) { .section-nav .inner { padding: 0 calc((100vw - 1180px) / 2 + 20px); } }
 .section-nav a {
   padding: 8px 16px;
   border-radius: 999px;
@@ -689,7 +716,7 @@ section.block { padding-top: 34px; scroll-margin-top: 130px; }
 .o2-row { display: grid; grid-template-columns: minmax(90px, 150px) 1fr; gap: 12px; align-items: center; }
 .o2-name { font-size: 0.88rem; font-weight: 600; text-align: right; color: var(--ink-2); line-height: 1.25; }
 .o2-name small { display: block; font-weight: 500; color: var(--muted); font-size: 0.76rem; }
-.o2-track { position: relative; height: 22px; display: flex; align-items: center; }
+.o2-track { position: relative; height: 22px; display: flex; align-items: center; padding-right: 56px; }
 .o2-track::before {
   content: ""; position: absolute; left: 0; right: 0; top: 50%;
   height: 10px; transform: translateY(-50%);
@@ -711,7 +738,8 @@ section.block { padding-top: 34px; scroll-margin-top: 130px; }
   position: absolute; bottom: calc(100% + 6px); left: 0;
   background: var(--ink); color: var(--bg);
   padding: 5px 10px; border-radius: 8px;
-  font-size: 0.76rem; font-weight: 600; white-space: nowrap;
+  font-size: 0.76rem; font-weight: 600;
+  max-width: min(62vw, 220px); white-space: normal;
   opacity: 0; visibility: hidden; transition: opacity 0.15s; z-index: 5;
 }
 .o2-scale {
@@ -1364,25 +1392,38 @@ body.fx-page-exit {
   position: absolute; inset: 0; z-index: 50;
   display: flex; flex-direction: column; justify-content: center; gap: 16px;
   padding: 32px 24px; overflow-y: auto;
-  background: radial-gradient(circle at 50% 20%, #1c2a3a, #0a0d11 70%);
+  background: radial-gradient(circle at 50% 20%, #16281f, #0a0d11 70%);
 }
 .pkf-gate[hidden] { display: none; }
 .pkf-gate .pkf-badge {
-  width: 56px; height: 56px; border-radius: 16px; background: #d9a13b;
+  width: 56px; height: 56px; border-radius: 16px; background: #2f6b4e;
   display: grid; place-items: center; margin-bottom: 4px;
+  box-shadow: 0 0 0 8px rgba(47, 107, 78, 0.18), 0 10px 24px -8px rgba(47, 107, 78, 0.65);
 }
-.pkf-gate .pkf-badge svg { width: 30px; height: 30px; color: #14181d; }
+.pkf-gate .pkf-badge svg { width: 30px; height: 30px; color: #ffffff; }
+.pkf-gate .pkf-kicker {
+  display: inline-flex; align-items: center;
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase;
+  color: #7fc7a0;
+}
 .pkf-gate h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
 .pkf-gate p { color: #b9bcc2; font-size: 0.95rem; max-width: 46ch; line-height: 1.55; }
+.pkf-hero-stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 4px; }
+.pkf-hero-stat {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; border-radius: 999px;
+  background: rgba(109, 185, 143, 0.12); border: 1px solid rgba(109, 185, 143, 0.3);
+  color: #cfe9db; font-size: 0.78rem; font-weight: 600;
+}
 .pkf-checklist { border: 1px solid #262d36; border-radius: 12px; overflow: hidden; margin: 4px 0; }
 .pkf-checklist > div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid #262d36; font-size: 0.82rem; }
 .pkf-checklist > div:first-child { border-top: 0; }
 .pkf-checklist .k { color: #8b939d; }
 .pkf-checklist .v.ok { color: #57c98a; } .pkf-checklist .v.bad { color: #e0715a; } .pkf-checklist .v.warn { color: #e6a94b; }
 .pkf-btn-primary {
-  background: #d9a13b; color: #14181d; border: 0; border-radius: 14px;
+  background: #2f6b4e; color: #ffffff; border: 0; border-radius: 14px;
   font-weight: 800; font-size: 1rem; padding: 15px 22px; cursor: pointer;
-  box-shadow: 0 10px 26px -8px rgba(217, 161, 59, 0.55);
+  box-shadow: 0 10px 26px -8px rgba(47, 107, 78, 0.65);
 }
 .pkf-btn-primary:disabled { opacity: 0.5; box-shadow: none; }
 .pkf-btn-ghost {
@@ -1539,7 +1580,7 @@ body.fx-page-exit {
 .pkf-perm-primer .ic { font-size: 1.1rem; flex: none; line-height: 1.3; }
 .pkf-perm-primer b { color: #e9eae5; }
 .pkf-link-btn {
-  background: none; border: 0; color: #d9a13b; font: inherit; font-size: 0.85rem; font-weight: 600;
+  background: none; border: 0; color: #7fc7a0; font: inherit; font-size: 0.85rem; font-weight: 600;
   text-decoration: underline; text-underline-offset: 2px; cursor: pointer; padding: 4px 0; text-align: left;
 }
 
@@ -1567,7 +1608,7 @@ body.fx-page-exit {
   background: rgba(255,255,255,0.06); color: #e9eae5; border: 1px solid rgba(255,255,255,0.16);
   border-radius: 20px; font: inherit; font-size: 0.8rem; padding: 8px 14px; cursor: pointer;
 }
-.pkf-manual-quickpicks button:hover, .pkf-manual-quickpicks button:focus-visible { background: rgba(217,161,59,0.16); border-color: #d9a13b; }
+.pkf-manual-quickpicks button:hover, .pkf-manual-quickpicks button:focus-visible { background: rgba(47,107,78,0.22); border-color: #2f6b4e; }
 
 /* ---- Stage 5: map mode (camera denied fallback, t5-1/t5-2) ---- */
 .pkf-map-view { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; background: #0a0d11; }
@@ -1632,3 +1673,59 @@ body.fx-page-exit {
 .pkf-page .bottom-nav a { color: rgba(255, 255, 255, 0.55); }
 .pkf-page .bottom-nav a.active { color: #fff; }
 .pkf-page .bottom-nav a.active svg { color: #d9a13b; }
+
+/* ============================================================
+   Print / "Save as PDF" (trek detail page)
+   ============================================================ */
+.print-banner { display: none; }
+
+@media print {
+  :root, [data-theme="dark"] {
+    --bg: #ffffff; --bg-soft: #f4f2ea; --card: #ffffff; --card-2: #ffffff;
+    --ink: #1a1b17; --ink-2: #45443d; --muted: #6b6a62; --line: #d8d4c7;
+    --brand: #2f6b4e; --brand-soft: #e3ede6;
+    --shadow: none; --shadow-lg: none;
+  }
+  body { background: #fff; }
+
+  .site-header, .bottom-nav, .section-nav,
+  .hero-top, .map-actions, #route-iframe,
+  .plan-cta, .lightbox, .skip-link { display: none !important; }
+
+  /* scroll-reveal (.fx-reveal, effects.js) only plays once a section has
+     actually scrolled into view — anything below the fold at print time
+     would otherwise still be sitting at opacity:0 and print as blank */
+  .fx-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+
+  .print-banner {
+    display: block;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--ink-2);
+  }
+
+  .hero { position: static; height: auto; box-shadow: none; }
+  .hero::after { display: none; }
+  .hero-title { position: static; color: var(--ink); padding: 14px 0 0; }
+  .hero-title h1, .hero-title .card-loc { text-shadow: none; }
+
+  .stats-strip { margin-top: 10px; }
+
+  .panel, .trek-card, .wild-card, .price-row, .safety-item, .g-item, .fit-req li {
+    box-shadow: none;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  section.block { padding-top: 20px; }
+
+  /* gallery/peaks strips are horizontally-scrollable on screen; on paper
+     there's no scrolling, so make every photo wrap onto the page instead
+     of only the first row that happened to fit */
+  .gallery-strip { flex-wrap: wrap !important; overflow: visible !important; }
+  .g-item { flex: 0 0 31%; max-width: 31%; }
+  .g-item:hover { transform: none; }
+
+  .route-wrap { grid-template-columns: 1fr; }
+}

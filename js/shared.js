@@ -54,6 +54,7 @@ const ICONS = {
   compass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/></svg>',
   bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 4h12v17l-6-4.5L6 21Z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5"/><path d="M4.5 16.5v2A2.5 2.5 0 0 0 7 21h10a2.5 2.5 0 0 0 2.5-2.5v-2"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>',
@@ -117,23 +118,6 @@ const SCENE_MODS = {
   autumn: p => ({ ...p, sky: p.sky.map(c => hexMix(c, "#f2c078", 0.35)), sun: "#ffe1b0", far: hexMix(p.far, "#b07d4a", 0.28), mid: hexMix(p.mid, "#8a5a30", 0.25), near: hexMix(p.near, "#4f3a22", 0.25) })
 };
 
-/* Gallery: generated seasonal views of a trek with contextual captions */
-function galleryFor(trek) {
-  const cp = trek.checkpoints;
-  const top = cp[cp.length - 1].name;
-  const base = cp[0].name;
-  const mid = cp[Math.max(cp.length - 2, 0)].name;
-  const peak = (cp[cp.length - 1].peaks && cp[cp.length - 1].peaks[0]) || "the high peaks";
-  return [
-    { mod: "dawn",    cap: `First light on ${peak} — spring` },
-    { mod: "day",     cap: `Summer midday on the trail to ${top}` },
-    { mod: "monsoon", cap: `Monsoon mists over ${mid}` },
-    { mod: "autumn",  cap: `Autumn gold above ${base}` },
-    { mod: "winter",  cap: `Deep winter snow near ${mid}` },
-    { mod: "dusk",    cap: `Alpenglow from ${top}` },
-    { mod: "night",   cap: `Night sky over ${base}` }
-  ];
-}
 
 /**
  * Layered SVG mountain scene used as card / hero art.

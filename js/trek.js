@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#back-btn").addEventListener("click", () =>
     history.length > 1 ? history.back() : location.assign("index.html"));
 
+  initOfflineDownload();
+
   renderHero();
   renderStats();
   renderOverview();
@@ -66,22 +68,66 @@ function renderHero() {
   });
 }
 
+/* ---------- Offline download (native print-to-PDF) ---------- */
+function initOfflineDownload() {
+  $(".header-actions").insertAdjacentHTML("afterbegin", `
+    <div class="dl-wrap" id="dlWrap">
+      <span class="dl-label">Download this trek info offline</span>
+      <button class="icon-btn" id="hero-download" aria-label="Download this trek as an offline PDF" title="Tap twice to save as PDF"></button>
+    </div>`);
+
+  const wrap = $("#dlWrap");
+  const btn = $("#hero-download");
+  btn.innerHTML = ICONS.download;
+
+  let collapseTimer = null;
+  btn.addEventListener("click", async () => {
+    if (wrap.classList.contains("open")) {
+      clearTimeout(collapseTimer);
+      wrap.classList.remove("open");
+      await forceLoadImages(); // lazy-loaded photos further down the page may not
+                                // have fetched yet — make sure they're all in before printing
+      window.print(); // print stylesheet (css/styles.css @media print) strips the UI chrome;
+                       // user picks "Save as PDF" as the destination in the print dialog
+    } else {
+      wrap.classList.add("open");
+      collapseTimer = setTimeout(() => wrap.classList.remove("open"), 4000);
+    }
+  });
+  document.addEventListener("click", e => {
+    if (wrap.classList.contains("open") && !wrap.contains(e.target)) {
+      clearTimeout(collapseTimer);
+      wrap.classList.remove("open");
+    }
+  });
+
+  window.addEventListener("beforeprint", () => {
+    const banner = $("#printBanner");
+    if (!banner) return;
+    const stamp = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    banner.textContent = `${trek.name} · TrekSense — saved ${stamp}. Weather, map link and prices are as of that moment.`;
+  });
+}
+
+function forceLoadImages() {
+  const imgs = [...document.querySelectorAll('img[loading="lazy"]')];
+  imgs.forEach(img => { img.loading = "eager"; });
+  return Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+    img.addEventListener("load", resolve, { once: true });
+    img.addEventListener("error", resolve, { once: true });
+  })));
+}
+
 /* ---------- Gallery + lightbox ---------- */
 let lbIndex = 0, lbItems = [];
 
 function renderGallery() {
-  /* real photographs first; seasonal illustrations top the strip up to 10+ */
-  lbItems = trekPhotos(trek.id).map(p => ({ type: "photo", src: p.src, cap: p.credit }));
-  if (lbItems.length < 10) {
-    const pad = galleryFor(trek).slice(0, 10 - lbItems.length)
-      .map(g => ({ type: "svg", mod: g.mod, cap: g.cap + " (illustration)" }));
-    lbItems = lbItems.concat(pad);
-  }
+  /* real curated photographs only — no illustrated filler standing in for
+     photos that don't exist yet, so the gallery only ever shows what's real */
+  lbItems = trekPhotos(trek.id).map(p => ({ src: p.src, cap: p.credit }));
 
   const frame = (g, i) =>
-    g.type === "photo"
-      ? `${sceneSVG(trek.scene, "gal" + i)}<img class="cover" src="${g.src}" alt="${trek.name} photo ${i + 1}" loading="lazy">`
-      : sceneSVG(trek.scene, "gal" + i, g.mod);
+    `${sceneSVG(trek.scene, "gal" + i)}<img class="cover" src="${g.src}" alt="${trek.name} photo ${i + 1}" loading="lazy">`;
 
   $("#gallery-strip").innerHTML = lbItems.map((g, i) => `
     <figure class="g-item" data-i="${i}" role="button" tabindex="0" aria-label="View image ${i + 1}">
@@ -104,9 +150,7 @@ function renderGallery() {
   const show = i => {
     lbIndex = (i + lbItems.length) % lbItems.length;
     const g = lbItems[lbIndex];
-    $("#lb-stage").innerHTML = g.type === "photo"
-      ? `<img src="${g.src}" alt="${trek.name}">`
-      : sceneSVG(trek.scene, "lb", g.mod);
+    $("#lb-stage").innerHTML = `<img src="${g.src}" alt="${trek.name}">`;
     $("#lb-cap").textContent = `${trek.name} — ${g.cap}`;
   };
 
