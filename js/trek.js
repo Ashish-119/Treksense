@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateThemeIcons();
 
   document.title = `${trek.name} — TrekSense`;
+  RecentStore.add(trek.id);
 
   $("#back-btn").addEventListener("click", () =>
     history.length > 1 ? history.back() : location.assign("index.html"));
@@ -27,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderRoute();
   renderWeatherStatic();   // instant paint
   fetchLiveWeather();      // then upgrade to live data
+  initWeatherAutoRefresh(); // ...and keep it current while the page stays open
   renderSegments();
   renderOxygen();
   renderCheckpoints();
@@ -264,16 +266,65 @@ function forecastHTML(days) {
     </div>`).join("");
 }
 
+/* ---------- Trail Status: estimated from weather, not a live advisory ---------- */
+const TRAIL_TIERS = [
+  { label: "Good",    color: "var(--easy)" },
+  { label: "Caution", color: "var(--moderate)" },
+  { label: "Rough",   color: "var(--hard)" },
+  { label: "Closed",  color: "var(--danger)" }
+];
+
+/* Live path: real WMO weather code + wind (km/h) + precipitation (mm) from Open-Meteo */
+function trailStatusFromWeather(code, wind, precipMm) {
+  const precip = precipMm || 0;
+  if ([95, 96, 99].includes(code)) return { tier: 4, reason: "Severe storm reported near the trailhead — trek likely closed" };
+  if ([65, 67, 82].includes(code) || precip >= 8) return { tier: 4, reason: "Heavy rain — flood risk on lower sections" };
+  if ([75, 86].includes(code) || wind >= 55) return { tier: 4, reason: "Heavy snow/high winds — trail or approach road likely blocked" };
+  if ([61, 63, 80, 81].includes(code) || [71, 73, 85].includes(code) || wind >= 35 || precip >= 2)
+    return { tier: 3, reason: "Rough weather right now — trek with caution" };
+  if ([45, 48, 51, 53, 55, 56, 57, 1, 2, 3].includes(code) || wind >= 20)
+    return { tier: 2, reason: "Minor weather caution — trail is open" };
+  return { tier: 1, reason: "Clear conditions — good to go" };
+}
+
+/* Static fallback path: staticWeather only has a text condition + wind, no WMO code */
+function trailStatusFromCondText(condText, wind) {
+  const t = (condText || "").toLowerCase();
+  const w = wind || 0;
+  if (t.includes("thunderstorm")) return { tier: 4, reason: "Severe storm reported near the trailhead — trek likely closed" };
+  if (t.includes("rain") && !t.includes("showers")) return w >= 35
+    ? { tier: 4, reason: "Heavy rain — flood risk on lower sections" }
+    : { tier: 3, reason: "Rough weather right now — trek with caution" };
+  if (t.includes("snow")) return w >= 45
+    ? { tier: 4, reason: "Heavy snow/high winds — trail or approach road likely blocked" }
+    : { tier: 3, reason: "Rough weather right now — trek with caution" };
+  if (t.includes("shower") || t.includes("drizzle") || t.includes("fog")) return { tier: 2, reason: "Minor weather caution — trail is open" };
+  if (t.includes("overcast") || t.includes("cloud")) return w >= 35
+    ? { tier: 3, reason: "Rough weather right now — trek with caution" }
+    : { tier: 2, reason: "Minor weather caution — trail is open" };
+  return { tier: 1, reason: "Clear conditions — good to go" };
+}
+
+function renderTrailStatus(status) {
+  $("#tsTrack").innerHTML = TRAIL_TIERS.map((t, i) => `
+    <div class="ts-seg ${i + 1 === status.tier ? "active" : ""}" style="--seg-color:${t.color}">${t.label}</div>`).join("");
+  $("#tsReason").textContent = status.reason;
+}
+
 function renderWeatherStatic() {
   $("#weather-sub").textContent = `Conditions near ${trek.coords.label}.`;
   $("#weather-now").innerHTML = weatherNowHTML(trek.staticWeather, false);
   $("#forecast").innerHTML = forecastHTML(trek.staticWeather.daily);
+  renderTrailStatus(trailStatusFromCondText(trek.staticWeather.cond, trek.staticWeather.wind));
 }
 
+let lastWeatherFetch = 0;
+
 async function fetchLiveWeather() {
+  lastWeatherFetch = Date.now();
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${trek.coords.lat}&longitude=${trek.coords.lon}` +
-      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code` +
+      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,precipitation` +
       `&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=5&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("weather fetch failed");
@@ -296,10 +347,25 @@ async function fetchLiveWeather() {
 
     $("#weather-now").innerHTML = weatherNowHTML(now, true);
     $("#forecast").innerHTML = forecastHTML(days);
-    $("#weather-sub").textContent = `Live conditions near ${trek.coords.label} — updates every visit.`;
+    $("#weather-sub").textContent = `Live conditions near ${trek.coords.label} — refreshes automatically.`;
+    renderTrailStatus(trailStatusFromWeather(j.current.weather_code, now.wind, j.current.precipitation));
   } catch {
     /* offline / blocked: static fallback already rendered */
   }
+}
+
+/* Keep weather + Trail Status current while the page stays open, without a
+   full reload. Skips fetches while the tab is hidden, and catches up as
+   soon as it's visible again if it's been a while — no point hammering
+   Open-Meteo for a tab nobody's looking at. */
+function initWeatherAutoRefresh(intervalMs = 5 * 60 * 1000) {
+  setInterval(() => {
+    if (!document.hidden) fetchLiveWeather();
+  }, intervalMs);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && Date.now() - lastWeatherFetch > 60 * 1000) fetchLiveWeather();
+  });
 }
 
 /* ---------- Difficulty segments ---------- */

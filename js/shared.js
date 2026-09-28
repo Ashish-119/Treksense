@@ -42,6 +42,21 @@ const SavedStore = {
   }
 };
 
+/* ---------- Recently viewed treks (localStorage, most-recent-first) ---------- */
+const RecentStore = {
+  key: "ts-recent",
+  max: 8,
+  all() {
+    try { return JSON.parse(localStorage.getItem(this.key) || "[]"); }
+    catch { return []; }
+  },
+  add(id) {
+    const list = this.all().filter(x => x !== id);
+    list.unshift(id);
+    localStorage.setItem(this.key, JSON.stringify(list.slice(0, this.max)));
+  }
+};
+
 /* ---------- Icons (inline SVG, stroke-based) ---------- */
 const ICONS = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
@@ -189,14 +204,16 @@ function trekPhotos(id) {
   return (typeof TREK_IMAGES !== "undefined" && TREK_IMAGES[id]) || [];
 }
 
-/* Cover art: real photo layered over the SVG scene.
-   If the photo is missing/unloadable, onerror removes it → SVG shows. */
+/* Cover art: real photo, with the illustrated SVG scene as a fallback.
+   The SVG is real DOM/paint work (gradients, mountains, stars) — with a
+   photo for nearly every trek now, building it underneath every single
+   card just to have it instantly hidden was pure waste at 120 cards per
+   page. Build it lazily instead: only if the photo actually fails to
+   load (see the global error handler in this file). */
 function coverMedia(trek, uid) {
   const photos = trekPhotos(trek.id);
-  const img = photos.length
-    ? `<img class="cover" src="${photos[0].src}" alt="${trek.name}" loading="lazy" decoding="async">`
-    : "";
-  return sceneSVG(trek.scene, uid) + img;
+  if (!photos.length) return sceneSVG(trek.scene, uid);
+  return `<img class="cover" src="${photos[0].src}" alt="${trek.name}" loading="lazy" decoding="async" data-scene="${trek.scene}" data-scene-uid="${uid}">`;
 }
 
 /* ---------- Small helpers ---------- */
@@ -271,7 +288,9 @@ document.addEventListener("error", e => {
   const t = e.target;
   if (t && t.tagName === "IMG") {
     const card = t.closest(".peak-card");
-    card ? card.remove() : t.remove();
+    if (card) { card.remove(); return; }
+    if (t.dataset.scene) t.insertAdjacentHTML("beforebegin", sceneSVG(t.dataset.scene, t.dataset.sceneUid));
+    t.remove();
   }
 }, true);
 

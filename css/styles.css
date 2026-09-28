@@ -377,6 +377,56 @@ input, select { font: inherit; color: inherit; }
 .empty-state .big { font-size: 3rem; margin-bottom: 10px; }
 .empty-state h3 { color: var(--ink); font-size: 1.2rem; margin-bottom: 6px; }
 
+/* ============ Skeleton loading cards ============ */
+.skeleton-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+.sk-media { aspect-ratio: 16 / 10.5; background: var(--bg-soft); }
+.sk-stats { display: flex; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.sk-stats span { height: 14px; width: 46px; border-radius: 6px; background: var(--bg-soft); }
+.sk-foot { display: flex; justify-content: space-between; align-items: center; padding: 13px 18px 15px; margin-top: auto; }
+.sk-foot span:first-child { height: 13px; width: 72px; border-radius: 6px; background: var(--bg-soft); }
+.sk-foot span:last-child { height: 18px; width: 58px; border-radius: 6px; background: var(--bg-soft); }
+.sk-media, .sk-stats span, .sk-foot span { position: relative; overflow: hidden; }
+.sk-media::after, .sk-stats span::after, .sk-foot span::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+  transform: translateX(-100%);
+  animation: sk-shimmer 1.5s infinite;
+}
+[data-theme="dark"] .sk-media::after,
+[data-theme="dark"] .sk-stats span::after,
+[data-theme="dark"] .sk-foot span::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09), transparent);
+}
+@keyframes sk-shimmer { 100% { transform: translateX(100%); } }
+
+/* ============ Recently-viewed search panel ============ */
+.recent-panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-top: 10px;
+  box-shadow: var(--shadow);
+  animation: pop 0.2s ease;
+}
+.recent-panel[hidden] { display: none; }
+.recent-panel h4 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
 /* ============ Bottom nav (phone) ============ */
 .bottom-nav {
   position: fixed;
@@ -659,6 +709,34 @@ section.block { padding-top: 34px; scroll-margin-top: 130px; }
 .f-day .i { font-size: 1.7rem; margin: 8px 0 6px; }
 .f-day .hi { font-weight: 800; font-size: 0.98rem; }
 .f-day .lo { font-size: 0.85rem; color: var(--muted); }
+
+/* Trail Status — estimated from live weather, glows the active tier */
+.trail-status { margin-top: 16px; }
+.ts-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 10px; }
+.ts-title { font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; }
+.ts-title .ic { width: 15px; height: 15px; color: var(--muted); }
+.ts-note { font-size: 0.72rem; color: var(--muted); max-width: 320px; }
+.ts-track { display: flex; gap: 8px; }
+.ts-seg {
+  flex: 1;
+  text-align: center;
+  padding: 11px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+}
+.ts-seg.active {
+  color: #fff;
+  background: var(--seg-color, var(--brand));
+  border-color: var(--seg-color, var(--brand));
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--seg-color, var(--brand)) 25%, transparent), 0 8px 20px -6px var(--seg-color, var(--brand));
+}
+.ts-reason { margin-top: 10px; font-size: 0.85rem; color: var(--ink-2); }
 
 /* Difficulty / segments */
 .seg-list { display: flex; flex-direction: column; gap: 12px; }

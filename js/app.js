@@ -22,10 +22,23 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchTimer;
   $("#search-input").addEventListener("input", e => {
     clearTimeout(searchTimer);
+    const val = e.target.value.trim();
+    $("#recentPanel").hidden = val ? true : !$("#recentList").children.length;
     searchTimer = setTimeout(() => {          // debounce: 120 cards re-render
-      state.query = e.target.value.trim().toLowerCase();
+      state.query = val.toLowerCase();
       render();
     }, 150);
+  });
+  $("#search-input").addEventListener("focus", () => {
+    if ($("#search-input").value.trim()) return;
+    renderRecentPanel();
+  });
+  $("#search-input").addEventListener("blur", () => {
+    setTimeout(() => { $("#recentPanel").hidden = true; }, 150); // let a chip click register first
+  });
+  $("#recentList").addEventListener("click", e => {
+    const b = e.target.closest("[data-id]");
+    if (b) FX.navigate(`trek.html?id=${b.dataset.id}`);
   });
 
   $("#filter-toggle").addEventListener("click", () => {
@@ -37,6 +50,14 @@ document.addEventListener("DOMContentLoaded", () => {
   syncViewFromHash();
   window.addEventListener("hashchange", syncViewFromHash);
 });
+
+/* ---------- Recently-viewed search panel ---------- */
+function renderRecentPanel() {
+  const items = RecentStore.all().map(id => TREKS.find(t => t.id === id)).filter(Boolean);
+  $("#recentList").innerHTML = items.map(t =>
+    `<button class="chip" type="button" data-id="${t.id}">${t.name}</button>`).join("");
+  $("#recentPanel").hidden = !items.length;
+}
 
 function syncViewFromHash() {
   state.view = location.hash === "#/saved" ? "saved" : "explore";
