@@ -731,11 +731,13 @@ function renderFrame() {
   const vw = window.innerWidth, vh = window.innerHeight;
   const heading = computeTrueHeading();
   updateChips(heading);
-  if (heading == null) return;
+  if (heading == null) { updateOffscreenHints(0, 0); return; }
   drawTicks(heading, S.hFOV, vw);
   if (S.pos && S.peaks.length) {
     const pitch = S.pitch + S.pitchOffset;
     placeLabels(heading, pitch, S.hFOV, vw, vh);
+  } else {
+    updateOffscreenHints(0, 0); // nothing loaded — don't leave a stale hint from an earlier frame
   }
 }
 let lowAccBadSince = null;
@@ -815,8 +817,21 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
     .filter(Boolean)
     .sort((a, b) => a.dist - b.dist);
 
+  // Found live, real mountains, real distance: peaks 100+ km out (Dehradun-
+  // plains-to-high-Himalaya range, not unusual) have a real elevation angle
+  // of only a degree or two above the horizon — close enough to it that any
+  // natural tilt while "looking for mountains" pushes every one of their
+  // labels off the top or bottom of the frame. There was no bounds check at
+  // all here before, so an off-screen peak was simply invisible with zero
+  // indication it existed — indistinguishable from "no peaks this way."
+  const offMargin = 40; // rough label height, so a peak barely poking off-frame isn't miscounted
+  const above = visible.filter((v) => v.y < -offMargin);
+  const below = visible.filter((v) => v.y > vh + offMargin);
+  const onScreen = visible.filter((v) => v.y >= -offMargin && v.y <= vh + offMargin);
+  updateOffscreenHints(above.length, below.length);
+
   const placed = [];
-  visible.forEach((v) => {
+  onScreen.forEach((v) => {
     const labelW = v.p.name.length * 6.6 + 22, labelH = 34, gap = 14;
     let bottom = v.y - gap;
     let moved = true, guard = 0;
@@ -851,6 +866,18 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
     el.addEventListener("click", (ev) => { ev.stopPropagation(); openSheet(v.p, v.dist, v.brg); });
     hud.appendChild(el);
   });
+}
+/* y < 0 means the peak's real elevation angle is higher than wherever the
+   camera currently points — tilting the phone further up brings it down
+   toward centre. y > vh is the mirror case, tilt down. This is exactly the
+   ambiguity a user can't resolve on their own: "no peak this way" and "peak
+   this way but out of frame" look identical without this hint. */
+function updateOffscreenHints(aboveCount, belowCount) {
+  const above = $("pkfHintAbove"), below = $("pkfHintBelow");
+  above.hidden = aboveCount === 0;
+  if (aboveCount) above.textContent = "▲ " + aboveCount + " peak" + (aboveCount === 1 ? "" : "s") + " above — tilt up";
+  below.hidden = belowCount === 0;
+  if (belowCount) below.textContent = "▼ " + belowCount + " peak" + (belowCount === 1 ? "" : "s") + " below — tilt down";
 }
 
 /* ---------- detail sheet ---------- */

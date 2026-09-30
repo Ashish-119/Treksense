@@ -994,3 +994,52 @@ real numbers show — not worth guessing at now without that data.
 with a note of what you were sighting, a simple table, even just typed
 out here in conversation like every other stage. I'll fold it into
 BUILD-LOG once you have it, same as always.
+
+## Stage 6 — bug found in real field testing (Dehradun, 2026‑09‑30): peaks silently off-screen
+
+First genuine field test: 38 real peaks correctly loaded and listed, but
+the AR camera view showed none of them regardless of where the phone was
+pointed. Two things going on, only one of them a real bug:
+
+- **Not a bug:** the specific screenshot shared showed a heading of 200°
+  (south-southwest) — every peak in the loaded list clusters around
+  19-25° (north-northeast) plus one at 325°. Pointing away from the
+  Himalaya correctly shows nothing there.
+- **Real bug, found in `placeLabels()`:** there was no vertical bounds
+  check at all. A peak within the horizontal field of view got a label
+  positioned at whatever `y` the projection math produced, even if that
+  `y` fell above or below the visible screen entirely — it just silently
+  existed off-screen. At Dehradun-to-high-Himalaya distances (126-136 km
+  in the peak list — Jorkanden, Devbhoomi, Phawararang, all real
+  6,000m+ giants), the real elevation angle above the horizon is only
+  1-3°, so unless the phone is held at almost exactly the right tilt,
+  every single label lands off-frame. There was no way to tell "no peaks
+  this direction" apart from "peaks this direction, just not in view" —
+  exactly the symptom reported.
+
+Fix, in `placeLabels()`: peaks within the horizontal FOV are now further
+split into on-screen / above / below based on their computed `y`. Two new
+hint chips (`updateOffscreenHints()`) appear when peaks exist just outside
+the current vertical frame — `"▲ 3 peaks above — tilt up"` /
+`"▼ N peaks below — tilt down"` — using the same sign convention already
+in the projection math (worked out algebraically, not guessed: `y < 0`
+means the peak's real angle is higher than wherever the camera currently
+points, so tilting up brings it toward centre). Off-screen peaks are also
+now skipped in the collision-avoidance layout entirely, rather than doing
+that work for labels nobody can see. `SW_VERSION` → `pf-stage6-v3` (a
+separate, unrelated session already used `v2` for a gate-screen redesign
+on 2026‑09‑24 — bumped past it, not reused, so the service worker's cache
+actually notices this change).
+
+This is real evidence for t6-7 (tuning): the fix needed here wasn't a
+constant to retune (hFOV, refraction — those are geometrically correct),
+it's that extreme real-world viewing distances make elevation-angle
+precision genuinely hard for a human to hit by feel, which the projection
+math can't paper over — only a UI affordance can. Worth remembering as
+the field testing continues.
+
+**Ask for you:** retest the same Dehradun spot (or anywhere with distant
+peaks) once this is live. Point roughly toward where you know peaks are
+and confirm the tilt-up/tilt-down hint appears and correctly gets you
+there — that's the real test of whether the sign convention holds up
+outdoors, not just algebraically.
