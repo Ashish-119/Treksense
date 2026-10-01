@@ -1043,3 +1043,40 @@ peaks) once this is live. Point roughly toward where you know peaks are
 and confirm the tilt-up/tilt-down hint appears and correctly gets you
 there — that's the real test of whether the sign convention holds up
 outdoors, not just algebraically.
+
+## Stage 6 — bug found in real field testing (Tapovan/Rishikesh, 2026‑10‑01): label overlap at real density
+
+Rishikesh/Tapovan's view toward the Garhwal Himalaya put 80+ real named
+peaks in a narrow slice of sky — genuinely dense, real coverage, not a
+data problem. But `placeLabels()`'s collision-avoidance only ever pushes
+an overlapping label straight up; with this many peaks clustered at
+similar bearings that just produced an ever-taller column that ran out of
+room and started visually overlapping (seen live: Jorkanden, three
+different Swargarohini entries, Pt 6050, Karuntu Dhar, Kedar Kantha all
+stacked on top of each other, illegible).
+
+Fix, in `placeLabels()`: same pattern already proven in map mode for the
+identical problem — only the nearest `AR_MAX_LABELS` (8) peaks within the
+current view get a full label; the rest still get a dot (dimmer, `.dim`)
+so their position isn't hidden, and are still tappable to open the detail
+sheet via an invisible larger hit circle. That hit circle needed its own
+`pointer-events: auto` override — `.pkf-leaders` has a blanket
+`pointer-events: none` at the container level, the same bug class that
+made map mode's dots untappable before it was fixed there; caught
+proactively this time rather than found the hard way again. The complete
+set of peaks remains available via Peak list regardless of the on-screen
+cap. `SW_VERSION` → `pf-stage6-v4`.
+
+**Also raised, not yet resolved — needs a cleaner answer from you first:**
+an observed "0 peaks loaded / no peaks prepared yet — waiting for a
+connection" state that appeared to follow a previously-successful prepare
+("48 peaks loaded" then later "88 peaks loaded" in other screenshots),
+even on good wifi. This genuinely shouldn't happen — `getPrep()`'s stored
+record is never cleared by a failed/offline retry attempt (only a
+successful one moves it), so if a prep had already succeeded, the chip
+should keep showing "prepared Xm ago", not revert to "never prepared" —
+nothing in the code explains that reversion. Needs the exact sequence
+confirmed (did it genuinely go success → reverted-to-never-prepared, or
+was that screenshot actually the very first load before anything had
+prepared yet) before treating this as a real bug versus a screenshot
+taken out of order.

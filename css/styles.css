@@ -1517,6 +1517,12 @@ body.fx-page-exit {
 .pkf-leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
 .pkf-leaders line { stroke: rgba(255,255,255,0.55); stroke-width: 1; stroke-dasharray: 2 2; }
 .pkf-leaders circle { fill: #fff; }
+/* Stage 6: dense-cluster dots (beyond AR_MAX_LABELS) — dimmer than a
+   labelled peak's dot, and tappable despite the parent SVG's blanket
+   pointer-events:none (same fix as map mode's hit circles, applied
+   proactively here this time, not found the hard way again). */
+.pkf-leaders circle.dim { fill: rgba(255,255,255,0.45); }
+.pkf-leaders circle.pkf-dot-hit { fill: transparent; pointer-events: auto; cursor: pointer; }
 
 .pkf-hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
 .pkf-hud .pkf-hit { pointer-events: auto; }

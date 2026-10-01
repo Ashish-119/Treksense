@@ -830,8 +830,30 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
   const onScreen = visible.filter((v) => v.y >= -offMargin && v.y <= vh + offMargin);
   updateOffscreenHints(above.length, below.length);
 
+  // Found live, real mountains, real density: Tapovan's view toward the
+  // Garhwal range put 80+ real peaks in a narrow slice of sky, and the
+  // stacking logic below only ever pushes overlapping labels straight up —
+  // with this many clustered at similar bearings that just produces an
+  // ever-taller, illegible column. Same fix already proven in map mode:
+  // label only the nearest few, mark the rest with a plain (still tappable)
+  // dot, keep the complete list one tap away in Peak list.
+  const AR_MAX_LABELS = 8;
+  const toLabel = onScreen.slice(0, AR_MAX_LABELS); // onScreen inherits visible's nearest-first sort
+  const dotOnly = onScreen.slice(AR_MAX_LABELS);
+  dotOnly.forEach((v) => {
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    hit.setAttribute("cx", v.x); hit.setAttribute("cy", v.y); hit.setAttribute("r", 11);
+    hit.setAttribute("class", "pkf-dot-hit");
+    hit.addEventListener("click", () => openSheet(v.p, v.dist, v.brg));
+    leaders.appendChild(hit);
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", v.x); dot.setAttribute("cy", v.y); dot.setAttribute("r", 2.4);
+    dot.setAttribute("class", "dim");
+    leaders.appendChild(dot);
+  });
+
   const placed = [];
-  onScreen.forEach((v) => {
+  toLabel.forEach((v) => {
     const labelW = v.p.name.length * 6.6 + 22, labelH = 34, gap = 14;
     let bottom = v.y - gap;
     let moved = true, guard = 0;
