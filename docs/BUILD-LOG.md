@@ -1067,16 +1067,29 @@ proactively this time rather than found the hard way again. The complete
 set of peaks remains available via Peak list regardless of the on-screen
 cap. `SW_VERSION` → `pf-stage6-v4`.
 
-**Also raised, not yet resolved — needs a cleaner answer from you first:**
-an observed "0 peaks loaded / no peaks prepared yet — waiting for a
-connection" state that appeared to follow a previously-successful prepare
-("48 peaks loaded" then later "88 peaks loaded" in other screenshots),
-even on good wifi. This genuinely shouldn't happen — `getPrep()`'s stored
-record is never cleared by a failed/offline retry attempt (only a
-successful one moves it), so if a prep had already succeeded, the chip
-should keep showing "prepared Xm ago", not revert to "never prepared" —
-nothing in the code explains that reversion. Needs the exact sequence
-confirmed (did it genuinely go success → reverted-to-never-prepared, or
-was that screenshot actually the very first load before anything had
-prepared yet) before treating this as a real bug versus a screenshot
-taken out of order.
+**The status-chip flicker — root cause confirmed, fixed.** User described
+the exact sequence precisely: "no peaks loaded, waiting for a connection"
+→ "preparing 3/25" → back to "waiting for a connection" → "preparing
+6/25" → ... repeating until 25/25, on a stable connection the whole time.
+That precision made the cause findable without guessing: `autoPrepareTick()`
+is called on every GPS position update, throttled to at most once every
+`AUTO_TICK_MIN_INTERVAL_MS` (3s) — but that throttle only guards *when the
+last tick started*, not whether it's *still running*. A real 25-tile
+prepare easily takes longer than 3s, so later GPS updates kept starting
+new overlapping ticks while the first was still in flight. `PeakStore`
+correctly recognised the overlap and returned `{skipped:
+"already-running"}` for those — but `autoPrepareTick()` didn't check for
+that case, and fell through to `refreshStaleChip()` anyway, which read
+the still-null prep record (the real prepare hadn't finished writing it
+yet) and overwrote the chip with "no peaks prepared yet" — stomping the
+genuine progress text the real in-flight tick had just shown moments
+earlier. Repeats every few seconds for the whole prepare, exactly the
+reported flicker.
+
+Fix, in `js/peakfinder.js`: a module-level `autoTickInFlight` flag now
+stops any tick from starting at all while one is already running, so
+there's no second tick left to do the stomping. `SW_VERSION` bumped to
+`pf-stage6-v5` locally. **Built and verified locally (balance check,
+headless-Chrome clean-boot check) but NOT yet pushed** — per instruction
+received live during this field-testing session, nothing gets pushed
+without explicit go-ahead each time, even a fix found mid-test.

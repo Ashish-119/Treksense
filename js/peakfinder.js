@@ -665,29 +665,46 @@ async function loadPeaksForCurrentArea() {
    doesn't spam IndexedDB reads for no reason. */
 let lastAutoTickAt = 0;
 const AUTO_TICK_MIN_INTERVAL_MS = 3000;
+// Found live in Rishikesh: a real 25-tile prepare easily takes longer than
+// AUTO_TICK_MIN_INTERVAL_MS, and that throttle only guards *when the last
+// tick started*, not whether it's still running. GPS kept firing position
+// updates every few seconds throughout the prepare, each one starting a new
+// overlapping tick; PeakStore correctly skipped those as "already-running",
+// but this function still fell through to refreshStaleChip() regardless —
+// which, for a brand-new area, read the still-null prep record (the real
+// in-flight prepare hadn't finished writing it yet) and overwrote the chip
+// with "no peaks prepared yet", stomping the genuine "preparing N/25" text
+// the real tick had just shown. This flag stops any tick from running at
+// all while one is already in flight, so there's nothing left to stomp.
+let autoTickInFlight = false;
 async function autoPrepareTick() {
-  if (!S.pos) return;
+  if (!S.pos || autoTickInFlight) return;
   const now = Date.now();
   if (now - lastAutoTickAt < AUTO_TICK_MIN_INTERVAL_MS) return;
   lastAutoTickAt = now;
-  const result = await PeakStore.autoPrepareIfNeeded(S.pos, { radiusKm: PREPARE_RADIUS_KM, onStatus: onPrepStatus });
-  // Only real attempts, not no-op skips (not-needed/already-running/backoff/
-  // offline) — those aren't failures, they're the drift detector correctly
-  // doing nothing, and would just be noise here.
-  if (result && !result.skipped) {
-    sendTelemetry("prepare-outcome", { context: {
-      fetched: result.fetched, failed: result.failed, evicted: result.evicted,
-      aborted: !!result.aborted, reason: result.reason,
-    } });
+  autoTickInFlight = true;
+  try {
+    const result = await PeakStore.autoPrepareIfNeeded(S.pos, { radiusKm: PREPARE_RADIUS_KM, onStatus: onPrepStatus });
+    // Only real attempts, not no-op skips (not-needed/already-running/backoff/
+    // offline) — those aren't failures, they're the drift detector correctly
+    // doing nothing, and would just be noise here.
+    if (result && !result.skipped) {
+      sendTelemetry("prepare-outcome", { context: {
+        fetched: result.fetched, failed: result.failed, evicted: result.evicted,
+        aborted: !!result.aborted, reason: result.reason,
+      } });
+    }
+    if (result && result.fetched > 0) {
+      await loadPeaksForCurrentArea();
+      // Map mode's loop may not be running at all right now (no live compass to
+      // animate) — explicitly repaint so freshly-loaded peaks actually appear
+      // instead of waiting for a loop tick that might never come.
+      if (!$("pkfMapView").hidden) renderMapPlot();
+    }
+    await refreshStaleChip();
+  } finally {
+    autoTickInFlight = false;
   }
-  if (result && result.fetched > 0) {
-    await loadPeaksForCurrentArea();
-    // Map mode's loop may not be running at all right now (no live compass to
-    // animate) — explicitly repaint so freshly-loaded peaks actually appear
-    // instead of waiting for a loop tick that might never come.
-    if (!$("pkfMapView").hidden) renderMapPlot();
-  }
-  await refreshStaleChip();
 }
 function onPrepStatus(evt) {
   if (evt.phase === "checking-online") setPrepLine("preparing…");
