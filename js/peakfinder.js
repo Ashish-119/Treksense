@@ -841,7 +841,14 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
   // labels off the top or bottom of the frame. There was no bounds check at
   // all here before, so an off-screen peak was simply invisible with zero
   // indication it existed — indistinguishable from "no peaks this way."
-  const offMargin = 40; // rough label height, so a peak barely poking off-frame isn't miscounted
+  // Found live: a generous margin here meant a peak whose TRUE position was
+  // still below the visible frame already counted as "on-screen", so the
+  // decluttering stack below could push its label up into the middle of the
+  // view while the real mountain (and the line to it) stayed clipped off the
+  // bottom edge — a label with nothing visibly under it, looking fake. This
+  // only needs to be large enough to absorb a pixel of sensor jitter right
+  // at the exact edge, not a whole label height.
+  const offMargin = 6;
   const above = visible.filter((v) => v.y < -offMargin);
   const below = visible.filter((v) => v.y > vh + offMargin);
   const onScreen = visible.filter((v) => v.y >= -offMargin && v.y <= vh + offMargin);
@@ -869,25 +876,42 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
     leaders.appendChild(dot);
   });
 
+  // Found live, real mountains, real density: with several genuine peaks at
+  // very similar bearing AND elevation angle (a tight massif like Kedarnath/
+  // Thalay Sagar/Chaukhamba), only ever pushing a conflicting label straight
+  // UP produced a single ever-taller column that still looked cramped even
+  // once no two labels technically overlapped. Now also fans sideways —
+  // alternating left/right, growing with each collision attempt — so a tight
+  // cluster spreads into the screen's full width, not just its height. The
+  // dot always marks the peak's true position; only the label (and the
+  // visible line connecting it back) moves.
   const placed = [];
   toLabel.forEach((v) => {
-    const labelW = v.p.name.length * 6.6 + 22, labelH = 34, gap = 14;
+    const labelW = v.p.name.length * 6.6 + 22, labelH = 34, gap = 22;
     let bottom = v.y - gap;
+    let xOffset = 0;
     let moved = true, guard = 0;
     while (moved && guard < 40) {
       moved = false; guard++;
       for (let j = 0; j < placed.length; j++) {
         const q = placed[j];
-        const overlapX = Math.abs(q.x - v.x) < labelW / 2 + q.w / 2 + 6;
+        const labelX = v.x + xOffset;
+        const overlapX = Math.abs(q.x - labelX) < labelW / 2 + q.w / 2 + 6;
         const top = bottom - labelH;
         const overlapY = !(top > q.bot || bottom < q.top);
-        if (overlapX && overlapY) { bottom = q.top - 6; moved = true; }
+        if (overlapX && overlapY) {
+          bottom = q.top - 6;
+          const step = Math.ceil(guard / 2) * (labelW * 0.4);
+          xOffset = (guard % 2 === 0 ? 1 : -1) * step;
+          moved = true;
+        }
       }
     }
-    placed.push({ x: v.x, w: labelW, top: bottom - labelH, bot: bottom });
+    const labelX = v.x + xOffset;
+    placed.push({ x: labelX, w: labelW, top: bottom - labelH, bot: bottom });
 
     const ln = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    ln.setAttribute("x1", v.x); ln.setAttribute("y1", bottom); ln.setAttribute("x2", v.x); ln.setAttribute("y2", v.y);
+    ln.setAttribute("x1", labelX); ln.setAttribute("y1", bottom); ln.setAttribute("x2", v.x); ln.setAttribute("y2", v.y);
     leaders.appendChild(ln);
     const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     dot.setAttribute("cx", v.x); dot.setAttribute("cy", v.y); dot.setAttribute("r", 2.4);
@@ -899,7 +923,7 @@ function placeLabels(heading, pitch, hFOV, vw, vh) {
     el.type = "button";
     el.className = "pkf-label pkf-hit" + (v.dist > 35 ? " far" : "") + (v.noElev ? " no-elev" : "");
     if (v.noElev) el.title = "Elevation unknown — placed on the horizon line, reduced vertical accuracy.";
-    el.style.left = v.x + "px";
+    el.style.left = labelX + "px";
     el.style.top = bottom + "px";
     el.innerHTML = '<div class="nm">' + escapeHTML(v.p.name) + '</div><div class="mt">' + ft + " · " + distTxt + " km · " + compassPoint(v.brg) + "</div>";
     el.addEventListener("click", (ev) => { ev.stopPropagation(); openSheet(v.p, v.dist, v.brg); });

@@ -27,14 +27,17 @@
   var DEFAULT_KEEP_RADIUS_KM = 250;                // evict tiles whose centre is farther than this from prep centre
   var DEFAULT_RADIUS_KM = 100;                     // the ~100 km disc the blueprint keeps prepared around the user
   var API_BASE = "";                               // same-origin; Stage 1's /api/peaks lives on this domain
-  var TILE_FETCH_TIMEOUT_MS = 42000;               // give up on one tile and move to the next rather than hang the
+  var TILE_FETCH_TIMEOUT_MS = 24000;               // give up on one tile and move to the next rather than hang the
                                                     // whole prepare forever. Must stay ABOVE api/peaks.js's own
-                                                    // worst case (2 Overpass endpoints x 20s = 40s, see that file's
-                                                    // PER_ENDPOINT_TIMEOUT_MS comment) — a shorter client timeout
-                                                    // was cutting off real, slow-but-successful responses before the
-                                                    // server even finished trying its second endpoint (seen live:
-                                                    // ~14/25 tiles killed at exactly 20.00s in the Network panel).
-                                                    // 42s leaves a small margin under vercel.json's 45s hard cap.
+                                                    // worst case — that used to be 2 Overpass endpoints tried
+                                                    // SEQUENTIALLY (20s x 2 = 40s), but api/peaks.js now races both
+                                                    // endpoints concurrently instead, so its real worst case dropped
+                                                    // to ~20s (found live in Rishikesh: real prepares were slow
+                                                    // enough someone could plausibly move out of the area before one
+                                                    // finished). 24s keeps the same safety margin this constant has
+                                                    // always needed — long enough to never cut off a real response
+                                                    // the server would have delivered, short enough that a genuinely
+                                                    // stuck tile doesn't stall everything behind it.
   var TILE_FETCH_CONCURRENCY = 2;                  // fetch this many tiles in parallel — kept modest because the
                                                     // public Overpass API's fair-use policy caps concurrent requests
                                                     // per client at ~2; going higher (tried 5) plausibly tripped that

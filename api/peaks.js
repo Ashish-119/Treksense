@@ -87,36 +87,44 @@ function normalise(elements) {
   return [...seen.values()];
 }
 
+/* Found live in Rishikesh: real prepares felt slow enough that someone
+   could plausibly walk/drive out of the prepared area before it finished.
+   This was trying the two Overpass mirrors SEQUENTIALLY — if the first was
+   slow, the second didn't even start until the first fully timed out (up
+   to 20s wasted before the backup got a chance). Racing both at once and
+   taking whichever answers first doesn't add load to either single host —
+   each still sees exactly one request from this call, just to two
+   different hosts simultaneously instead of one after the other — so it
+   doesn't reintroduce the fair-use problem that made TILE_FETCH_CONCURRENCY
+   get reduced on the client side; this is concurrency across hosts, not
+   concurrency against one of them. */
 async function queryOverpass(bbox) {
   const q =
     `[out:json][timeout:25];` +
     `(node["natural"="peak"]["name"](${bbox.s},${bbox.w},${bbox.n},${bbox.e}););` +
     `out body ${MAX_RESULTS};`;
+  const body = "data=" + encodeURIComponent(q);
+  const headers = {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "User-Agent": "TrekSense-PeakFinder/2.0 (+https://github.com/Ashish-119/Treksense)",
+  };
 
-  let lastErr;
-  for (const url of OVERPASS_ENDPOINTS) {
+  const attempts = OVERPASS_ENDPOINTS.map((url) => {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), PER_ENDPOINT_TIMEOUT_MS);
-    try {
-      const r = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "User-Agent": "TrekSense-PeakFinder/2.0 (+https://github.com/Ashish-119/Treksense)",
-        },
-        body: "data=" + encodeURIComponent(q),
-        signal: ac.signal,
-      });
-      clearTimeout(timer);
-      if (!r.ok) { lastErr = new Error("Overpass HTTP " + r.status); continue; }
-      const json = await r.json();
-      return json.elements || [];
-    } catch (e) {
-      clearTimeout(timer);
-      lastErr = e;
-    }
+    return fetch(url, { method: "POST", headers, body, signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Overpass HTTP " + r.status);
+        return (await r.json()).elements || [];
+      })
+      .finally(() => clearTimeout(timer));
+  });
+
+  try {
+    return await Promise.any(attempts);
+  } catch (aggregate) {
+    throw (aggregate.errors && aggregate.errors[0]) || new Error("Overpass unavailable");
   }
-  throw lastErr || new Error("Overpass unavailable");
 }
 
 function parseBbox(raw) {

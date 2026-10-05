@@ -1088,8 +1088,91 @@ reported flicker.
 
 Fix, in `js/peakfinder.js`: a module-level `autoTickInFlight` flag now
 stops any tick from starting at all while one is already running, so
-there's no second tick left to do the stomping. `SW_VERSION` bumped to
-`pf-stage6-v5` locally. **Built and verified locally (balance check,
-headless-Chrome clean-boot check) but NOT yet pushed** — per instruction
-received live during this field-testing session, nothing gets pushed
-without explicit go-ahead each time, even a fix found mid-test.
+there's no second tick left to do the stomping. `SW_VERSION` →
+`pf-stage6-v5`. **Pushed and confirmed live** (user explicitly approved
+this specific push).
+
+## Stage 6 — more real-device findings (Rishikesh/Tapovan, continued)
+
+Three more things from continued field testing, one answered, two built
+(not yet pushed — see the standing rule above, confirmed again this
+session: nothing goes live without an explicit go-ahead each time).
+
+**Straight-line vs. road distance — confirmed correct, not a bug.** User
+independently worked out that `PREPARE_RADIUS_KM`/distances are
+great-circle (`haversineKm`), not driving distance, after a Google Maps
+screenshot showed 259 km by road to a peak the app placed at ~100 km.
+That's exactly right — line-of-sight visibility depends on physical
+distance, not road distance, and a peak showing at exactly the 100 km
+boundary is the radius working as designed.
+
+**Prepare speed — real bottleneck found and fixed.** `api/peaks.js` was
+trying its two Overpass mirrors **sequentially** — a slow first endpoint
+meant the second didn't even get a chance until the first fully timed out
+(up to 20s wasted). Now races both concurrently via `Promise.any()`,
+taking whichever answers first. Doesn't add load to either single host
+(one request to each, simultaneously, not more requests to one) so it
+shouldn't reintroduce the fair-use throttling that forced client
+concurrency down earlier. Server's real worst case dropped from ~40s to
+~20s, so `TILE_FETCH_TIMEOUT_MS` in `js/peakstore.js` came down from 42s
+to 24s to match — a genuinely stuck tile now gives up sooner too.
+
+**Label overlap in genuinely dense real clusters (Kedarnath/Thalay
+Sagar/Chaukhamba massif) — fixed.** The existing collision-avoidance only
+ever pushed a conflicting label straight up, which for several real peaks
+at very similar bearing *and* elevation angle just produced one
+ever-taller column that still looked cramped. Labels now fan sideways too
+(alternating left/right, growing with each collision) in addition to
+stacking vertically, so a tight cluster spreads across the screen's width
+instead of just its height. The dot always stays at the peak's true
+position; only the label and its connecting line move.
+
+**Two items raised, not built — deliberately, pending direction:**
+
+1. **Terrain occlusion** (hiding a peak that's actually blocked by a
+   nearer ridge) — user correctly wants this for real, to avoid user
+   confusion about what's genuinely visible. Explained why Google's
+   Elevation/Maps APIs can't be *the* answer here: they're live,
+   cloud-only, billed services, fundamentally incompatible with "must
+   work with zero signal." The architecturally-consistent approach would
+   be an open elevation dataset (SRTM or similar, not Google) downloaded
+   and cached the same way peak data already is, then real ray-casting
+   done entirely on-device. This is a genuinely large feature — new data
+   source, much heavier local cache than peak metadata, real geometry —
+   closer to its own stage than a Stage 6 tweak. Recommended treating it
+   as a deliberate future stage rather than folding it in now; "line of
+   sight not checked" is already honestly flagged in the detail sheet in
+   the meantime. Awaiting direction on whether to scope this properly.
+2. **A peak-pointed-at-ground report** that coincided with the compass
+   showing ±24° accuracy (red, "tap to fix") on a metal suspension bridge
+   covered in prayer locks/chains — a very plausible source of magnetic
+   interference. Asked whether this also happens with good/stable compass
+   accuracy elsewhere before treating it as a separate pitch/tilt bug
+   distinct from a simply-uncalibrated compass at that moment.
+
+**Also noted, minor:** "HATHI PARVAT" and "Hathi Parbat" both appeared as
+separate list entries with identical stats (22,070 ft, 67 km, ENE) —
+almost certainly two OSM records for the same real mountain, different
+transliteration. A real-world OSM data-quality quirk, not a code bug;
+proximity-based dedup (~200m) could clean this up if wanted, not done yet.
+
+**Ground-pointing follow-up — confirmed real, root cause found, fixed.**
+User clarified precisely: tilting from the ground up toward a peak, the
+label appeared partway through the motion, before the camera was actually
+aligned with the real mountain — "looks fake." Real bug, in the on/off-
+screen gate in `placeLabels()`: `offMargin` (40px) meant a peak whose
+*true* position was still below the visible frame already counted as
+"on-screen", so the decluttering stack could push its label up into the
+middle of the view while the real mountain — and the line connecting to
+it — stayed clipped off the bottom edge. A label with nothing visibly
+under it. Tightened `offMargin` to 6px (just enough to absorb jitter
+right at the exact pixel edge, not most of a label's height), so a label
+now only appears once the peak's true position has genuinely entered the
+frame. Worth being clear this was purely a *visibility timing* bug, not a
+data one — peak data has always come straight from the local IndexedDB
+cache, offline-capable the whole time; this was never about where the
+name comes from, only about exactly when it was allowed to appear.
+
+**Pushed:** label fanning, the Overpass-racing speed fix + tightened
+timeout, and this visibility-margin fix all went live together.
+`SW_VERSION` → `pf-stage6-v6`.
